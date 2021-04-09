@@ -1,0 +1,355 @@
+---
+title: Augmented Neural ODE
+author: Anton Ruby Larsen and Nicolaj Hans Nielsen
+date: February 12th, 2021
+---
+
+In the intial analysis, we found that our Neural ODE, *NODE*, sometimes suffered from long
+training time and sometimes it was even inacurate. How come this be?
+
+
+* Is this because the NODE simply cannot represent the function?
+
+* If that is not the case, is there a way for us to improve the training of the Neural
+ODE?
+
+## Functions ODEs cannot represent
+NODEs approxmated the flow of a system of ODEs using a neural network hence it inherets
+some limitations and properties of systems of ODE. Therefore, we will briefly cover
+some important properties for ODEs.
+
+### Existance and uniqueness for ODEs
+Trajectories of ODEs **cannot** intersect in phasespace. This follows directly
+from the existance and uniqueness theorem ....
+
+A simple way to understand this is to look at an example in 1-D ODE. Consider
+two solutions $H_1(t)$ and $H_2(t)$ with $H_1(t_0)\neq H_2(t_0)$ and at some point $P$,
+we have $H_1(t_p)=H_2(t_p)$.
+Graphically, consider the situation for some $t=[t_0, t_1]$:
+
+![Existance and uniqueness](unique.png)
+
+
+Consider starting at $t_1$ and then move backwards in time. This seems fine, until we reach
+$t=t_p$. Since the solutions intersect, we do not know which path to take if we
+continue moving backwards in time. This ultimately means we could end up at arbitrary
+intial conditions. This would make our solution of very little use. Therefore, our
+solutions must obey the existance and uniqueness theorem.
+
+### Existance and uniqueness tested on neural ODEs
+The above theorem also holds for NODEs, however, it would be interesting to
+see what the model would do if presented for data that would obviously be
+well approximated by function that violates this. Could this blackbox somehow
+shortcircut the condition put forward?
+
+*NOTE: it is a quite constructed example, hence the implementation might not seem
+entirely intuitive. Therefore, focus mainly on the grapical result and focus instead
+on the code in the augmented section*
+
+We now want to show an example and hence we initalize the needed packages in julia:
+
+```julia
+using Flux, DiffEqFlux, OrdinaryDiffEq, Optim, Plots
+```
+
+Consider som simple 1-D system and with two sets of data points. One intial condition
+at $t=0$ and another data point at $t=1$; $r = \{(0,1),(1,-1)\}$
+and $b=\{(0,-1),(1,1)\}$:
+
+```julia
+r = Float32[1 -1]
+b = Float32[-1 1]
+data = vcat(r,b) # Float32[1.0 -1.0;
+                 #        -1.0 1.0]
+
+plot(0:1, data', label = ["b" "r"],seriestype = :scatter,legend=:left,markersize=5,color=[:blue :red],ylims=(-1.2,1.2))
+```
+
+We now try to train a function that simultaniously fits the flow between the points
+of $r$ and $b$.This would require the trajectories to intersect which would a direct violation
+of the existance and uni theorem.
+However, we let the train the Neural ODE for 20 epochs to see what happens. First
+define the neural ODE:
+
+```{julia, results="hidden"}
+tspan = (0.0f0, 1f0)
+tsteps = (0.0f0:0.01f0:1f0)
+datasize = length(tsteps)
+
+dudt2 = FastChain((x, p) -> x,
+                  FastDense(1, 50, tanh),
+                  FastDense(50, 1))
+prob_neuralode = NeuralODE(dudt2, tspan, Tsit5(), saveat = tsteps)
+```
+then we define the prediction function where we stipulated both the starting points:
+
+```{julia, results="hidden"}
+function predict_neuralode(p)
+  vcat(Array(prob_neuralode(Array([r[1]]), p)),Array((prob_neuralode(Array([b[1]]), p))))
+end
+```
+
+We only want to define the loss function the last prediction, i.e., at $t=1$:
+
+```{julia, results="hidden"}
+function loss_neuralode(p)
+    pred = predict_neuralode(p)
+    # note modified only to take out the first and last
+    loss = sum(abs2, data .- pred[:,[1,end]])
+    return loss, pred
+end
+```
+
+We define a call back function. That is a function we call by the end of each
+training epoch to track our training progression. At each epoch we display the
+loss function and construct a plot and make it a frame in the animation, `anim`.
+
+```{julia, results="hidden"}
+iter = 0
+anim = Animation()
+callback = function (p, l, pred; doplot = false)
+  global list_plots, iter, anim
+
+  # display the loss
+  display("Loss of iteration $iter: $l")
+
+  # plot current prediction against data
+  plt = plot(0:1, ode_data', label = ["b" "r"],seriestype = :scatter,legend=:top,color=[:blue :red],ylims=(-1.2,1.2))
+  plot!(plt, tsteps, pred', label = ["b NODE" "r NODE"],legend=:top,color=[:blue :red])
+  frame(anim)
+
+  iter += 1
+
+  return false
+end
+```
+
+Then train for 20 epochs and explicitly see the value of the loss function after
+each epoch:
+
+```julia
+result_neuralode = DiffEqFlux.sciml_train(loss_neuralode, prob_neuralode.p,
+                                          ADAM(0.05), cb = callback,
+                                          maxiters = 20);
+```
+
+we can now see the training as a gif:
+
+```julia
+gif(anim,"test_Violate.gif",fps=5)
+```
+
+We see that the approxmated flow simply does not allow the intersection which
+which shows the inherent properties of the ODE existance and uniqueness theorem.
+
+This is not always the case for ML algorithms that tries to mimic ODE behaviour
+and properties. Another common way to approximate a discrete dynamical system is
+using ResNet. In ... they also use the same toyexample as above and show that
+the ResNet approximation allows for trajectories to cross. Sometimes NODEs are
+reffered to as the continuous version of the ResNet.
+
+
+With the analysis above, we conclude that some functions cannot be approxmated by
+an NODE due to the inherent properties of ODE flows. However, if we are trying to
+approxmate the flow of an ODE, can we do something to improve the training. The
+answer lies in an expansion of the solution space.
+
+
+## Introducing augmented neural ODE
+
+When we train the neural network to approxmate the flow of an ODE, the procedure
+runs many different combinations of weights and biases. As trajectories cannot
+cross in phasespace, we do limit the solution space and this often leads
+to poor approximations, huge computational cost and complicated flows [..].
+The idea is to extend the solution space from ${\rm I\!R}^{d}$
+to ${\rm I\!R}^{d+p}$. In the extra $p$ dimensions, the trajectories can make simpler
+flows and still avoid intersections which is very well described and shows in [..].
+Lets consider an NODE and extend it to an augmented neural ODE, *ANODE*.
+
+Consider the intial value problem, IVP:
+
+```math
+\frac{\mathrm{d}}{\mathrm{d}t}u(t)=f(u(t),t),
+\quad \quad \quad u(0)=u_0, \quad u_0 \in{\rm I\!R}^{d}
+```
+Where we want to find `f(t)` using some neural network. We then
+introduce $\frac{\mathrm{d}}{\mathrm{d}t}a(t)=f(a(t),t)$,
+$a(0)=0$ with $a(t) \in{\rm I\!R}^{p}$ and vertically concatenate to obtain the
+augmented NODE problem:
+
+
+$$
+\left[\begin{array}{c} u(t) \\ a(t) \end{array}\right] = f\left(\begin{array}{c} u(t) \\ a(t) \end{array},t\right),
+\quad \quad \quad \left[\begin{array}{c} u(0) \\ a(0) \end{array}\right]=\left[\begin{array}{c} u_0 \\ 0 \end{array}\right]
+$$
+
+We can now now train this ANODE and only make the predicted $u(t)$
+contribute to the loss function as this is the, $d$, dimensions in which our data
+reside. Experimentally the augmented Neural ODE has shown to reduce the loss function,
+reduce computational cost, improve stability and generalization when presented to different inital conditions
+[1][2]. We test this in an example with the Lotka-Volterra:
+
+### Example with Lotka-Volterra
+
+We will know use the Lotka-Volterra as an example. We first define the model, make
+some data and test how the NODE performs on the data. Then we will define the
+augmented ODE problem and see how the ANODE performs when presented to the same
+data and using the same argitecture.
+
+First define the Lotka-Volterra:
+
+```julia
+function lotka_volt!(du, u, p, t)
+    x, y= u
+    α ,β, γ, δ = p'
+
+    du[1] = dx = α*x - β*x*y
+    du[2] = dy =  - γ*y + δ*x*y
+end
+
+u0 = Float32[1.0; 1.0]
+tspan = (0.0f0,10.0f0)
+datasize = 100
+t = range(tspan...,length=datasize)
+
+
+# Define the experimental parameter
+#p_ = Float32[α  β;
+#             γ  δ]
+p_ = Float32[1.5 1.0;
+             1.0 3.0]
+
+
+prob = ODEProblem(lotka_volt!, u0,tspan, p_)
+sol_lotka = solve(prob, Tsit5(),saveat=t)
+plot(t,sol_lotka',label=["x" "y"],seriestype = :scatter,ylims=(0,9))
+```
+
+We then define our Neural ODE and the prediction and loss function. We use
+2.... with `swish` nonlinearities. For the ODE solver we use a *Tsitouras 5/4 Runge-Kutta method*,
+`tsit5()` and save it only at time steps where we have data points. We then construct
+the prediction function and use square loss.
+
+```{julia, results="hidden"}
+NN = FastChain((x, p) -> x,
+                  FastDense(2, 32, swish),
+                  FastDense(32, 32, swish),
+                  FastDense(32, 2))
+
+prob_neuralode = NeuralODE(NN, tspan, Tsit5(), saveat = t)
+
+function predict_neuralode(p)
+  Array(prob_neuralode(u0, p))
+end
+
+function loss_neuralode(p)
+    pred = predict_neuralode(p)
+    loss = sum(abs2, sol_lotka .- pred)
+    return loss, pred
+end
+```
+
+We now initilize the iterator and an animation. We also modify
+the call back function s.t. it only outputs the loss function every 50th iteration.
+
+```julia
+iter = 0
+anim_lotka = Animation()
+callback = function (p, l, pred)
+  global list_plots, iter, anim_lotka
+
+  if iter%50 == 0
+    display("Loss of iteration $iter: $l")
+  end
+  # plot current prediction against data
+  plt = plot(t, sol_lotka', label = ["x" "y"],seriestype = :scatter,legend=:top,color=[:blue :red],ylims=(-0.1,6))
+  plot!(plt, t, pred', label = ["x NODE" "y NODE"],legend=:top,color=[:blue :red])
+  frame(anim_lotka)
+
+  iter += 1
+  return false
+end
+
+```
+
+We use an `ADAM` optimizer and want a precision of `0.05`, however, we set a
+maximum of 300 iterations:
+
+
+```julia
+result_neuralode = DiffEqFlux.sciml_train(loss_neuralode, prob_neuralode.p,
+                                          ADAM(0.05), cb = callback,
+                                          maxiters = 300);
+```
+we can now see the training as a gif:
+
+```julia
+gif(anim_lotka,"lotka.gif",fps=10)
+```
+
+This is a problem we have often encounter when fitting occilating systems. The
+neural ODE simply takes average. We now agument the ODE, i.e., we pad the initial
+conditions with 0 and then change the argitecture:
+
+```julia
+input_dim = size(u0)[1]
+hidden_dim = 1
+u0_aug = Float32[u0;zeros(hidden_dim)]
+
+NN = FastChain((x, p) -> x,
+                  FastDense(input_dim+hidden_dim, 32, swish),
+                  FastDense(32, 32, swish),
+                  FastDense(32, input_dim+hidden_dim))
+
+prob_neuralode = NeuralODE(NN, tspan, Tsit5(), saveat = t)
+
+function predict_neuralode(p)
+  Array(prob_neuralode(u0_aug, p))
+end
+```
+
+We only want the loss function to depend on the input dimension hence:
+
+```julia
+function loss_neuralode(p)
+    pred = predict_neuralode(p)
+    loss = sum(abs2, sol_lotka .- pred[1:input_dim,:])
+    return loss, pred
+end
+```
+
+We then train again and modify the call back function to include the added
+extra dimension:
+
+
+```julia
+iter = 0
+anim_lotka_aug = Animation()
+callback = function (p, l, pred)
+  global list_plots, iter, anim_lotka
+
+  if iter%50 == 0
+    display("Loss of iteration $iter: $l")
+  end
+  # plot current prediction against data
+  plt = plot(t, sol_lotka', label = ["x" "y"],seriestype = :scatter,legend=:top,color=[:blue :red],ylims=(-0.1,6))
+  plot!(plt, t, pred', label = ["x NODE" "y NODE" "Aug dim"],legend=:top,color=[:blue :red :green])
+  frame(anim_lotka_aug)
+
+  iter += 1
+  return false
+end
+result_neuralode = DiffEqFlux.sciml_train(loss_neuralode, prob_neuralode.p,
+                                          ADAM(0.05), cb = callback,
+                                          maxiters = 300);
+```
+
+In the value of the loss function, we already see improvements. They are also more
+visible when we plot the graphical training:
+
+```julia
+gif(anim_lotka_aug,"lotka_Augmented.gif",fps=10)
+```
+
+One might rightfully ask what on earth is then going on in this extra dimension.
+This we will investigate in the next section.

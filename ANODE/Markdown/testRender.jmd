@@ -1,0 +1,11 @@
+---
+title: Augmented Neural ODE
+author: Anton Ruby Larsen and Nicolaj Hans Nielsen
+date: February 12th, 2021
+---
+
+```julia
+using Plots
+```
+
+![s](raw"C:\Users\Nicolaj\Documents\GitHub\SciML_DTU\ANODE\Figures\unique.png")
