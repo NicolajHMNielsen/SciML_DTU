@@ -4,6 +4,15 @@ author: Anton Ruby Larsen and Nicolaj Hans Nielsen
 date: February 12th, 2021
 ---
 
+Initalize the needed packages in julia:
+
+```julia
+# for modelling:
+using Flux, DiffEqFlux, OrdinaryDiffEq, Optim, Plots
+# for images (only for html rendering)
+using Images, FileIO, ImageView
+```
+
 In the intial analysis, we found that our Neural ODE, *NODE*, sometimes suffered from long
 training time and sometimes it was even inacurate. How come this be?
 
@@ -27,8 +36,11 @@ two solutions $H_1(t)$ and $H_2(t)$ with $H_1(t_0)\neq H_2(t_0)$ and at some poi
 we have $H_1(t_p)=H_2(t_p)$.
 Graphically, consider the situation for some $t=[t_0, t_1]$:
 
-![Existance and uniqueness](unique.png)
-
+```julia
+path_IM = "ANODE/Figures/unique.png"
+path_IM = raw".\ANODE\Figures\unique.png"
+load(path_IM)
+```
 
 Consider starting at $t_1$ and then move backwards in time. This seems fine, until we reach
 $t=t_p$. Since the solutions intersect, we do not know which path to take if we
@@ -46,11 +58,7 @@ shortcircut the condition put forward?
 entirely intuitive. Therefore, focus mainly on the grapical result and focus instead
 on the code in the augmented section*
 
-We now want to show an example and hence we initalize the needed packages in julia:
 
-```julia
-using Flux, DiffEqFlux, OrdinaryDiffEq, Optim, Plots
-```
 
 Consider som simple 1-D system and with two sets of data points. One intial condition
 at $t=0$ and another data point at $t=1$; $r = \{(0,1),(1,-1)\}$
@@ -111,10 +119,12 @@ callback = function (p, l, pred; doplot = false)
   global list_plots, iter, anim
 
   # display the loss
+  if iter%5 == 0
   display("Loss of iteration $iter: $l")
+  end
 
   # plot current prediction against data
-  plt = plot(0:1, ode_data', label = ["b" "r"],seriestype = :scatter,legend=:top,color=[:blue :red],ylims=(-1.2,1.2))
+  plt = plot(0:1, data', label = ["b" "r"],seriestype = :scatter,legend=:top,color=[:blue :red],ylims=(-1.2,1.2))
   plot!(plt, tsteps, pred', label = ["b NODE" "r NODE"],legend=:top,color=[:blue :red])
   frame(anim)
 
@@ -127,16 +137,30 @@ end
 Then train for 20 epochs and explicitly see the value of the loss function after
 each epoch:
 
-```julia
+```{julia, eval=false}
 result_neuralode = DiffEqFlux.sciml_train(loss_neuralode, prob_neuralode.p,
                                           ADAM(0.05), cb = callback,
                                           maxiters = 20);
 ```
+```{julia,echo=false}
+display("Loss of iteration 0: 7.4559307")
+display("Loss of iteration 5: 2.1491983")
+display("Loss of iteration 10: 2.01211")
+display("Loss of iteration 15: 2.0020065")
+display("Loss of iteration 20: 2.0007248")
+```
+
 
 we can now see the training as a gif:
 
-```julia
-gif(anim,"test_Violate.gif",fps=5)
+```{julia, eval=false}
+gif(anim,raw"ANODE\Figures\test_Violate.gif",fps=5)
+```
+![plots](ANODE\Figures\test_Violate.gif)
+
+```{julia, echo=False}
+img = load(raw"ANODE\Figures\test_Violate.gif")
+imshow(img)
 ```
 
 We see that the approxmated flow simply does not allow the intersection which
