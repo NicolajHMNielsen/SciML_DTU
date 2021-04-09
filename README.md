@@ -1,4 +1,3 @@
 # SciML_DTU
- nn
  
- ![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/unique.png)
+To see the HTML go to (GitHub & BitBucket HTML Preview)[https://htmlpreview.github.io/]. 
