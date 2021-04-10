@@ -36,11 +36,7 @@ two solutions $H_1(t)$ and $H_2(t)$ with $H_1(t_0)\neq H_2(t_0)$ and at some poi
 we have $H_1(t_p)=H_2(t_p)$.
 Graphically, consider the situation for some $t=[t_0, t_1]$:
 
-```julia
-path_IM = "ANODE/Figures/unique.png"
-path_IM = raw".\ANODE\Figures\unique.png"
-load(path_IM)
-```
+![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/unique.png?raw=true)
 
 Consider starting at $t_1$ and then move backwards in time. This seems fine, until we reach
 $t=t_p$. Since the solutions intersect, we do not know which path to take if we
@@ -273,7 +269,7 @@ end
 We now initilize the iterator and an animation. We also modify
 the call back function s.t. it only outputs the loss function every 50th iteration.
 
-```julia
+```{julia, eval=false}
 iter = 0
 max_iter = 600
 loss_vec = Array{Float32}(undef,max_iter+1)
@@ -328,7 +324,7 @@ We can now see the training as a gif:
 ```{julia, eval=false}
 gif(anim_lotka,raw"ANODE\Figures\lotka-Volterra.gif",fps=15)
 ```
-![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/lotka_Volterra.gif?raw=true)
+![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/lotka-Volterra.gif?raw=true)
 
 This is a problem we have often encounter when fitting occilating systems. The
 neural ODE simply takes average. We now agument the ODE, i.e., we pad the initial
@@ -403,7 +399,7 @@ plt_loss = plot(loss_vec,label="log loss", title="Log loss function of 1-dim aug
                 xlabel="Iteration",yaxis=:log,ylabel="log loss")
 png(plt_loss,raw"ANODE\Figures\loss_lotka-volterra_aug_1dim.png")
 ```
-![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/lotka-Volterra_aug_1dim.gif?raw=true)
+![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/loss_lotka-volterra_aug_1dim.png?raw=true)
 
 They are also more visible when we plot the graphical training:
 
@@ -414,7 +410,7 @@ gif(anim_lotka_aug,raw"ANODE\Figures\lotka-volterra_aug_1dim.gif",fps=15)
 
 We can now try to add more dimensions:
 
-```julia
+```{julia, eval=false}
 input_dim = size(u0)[1]
 hidden_dim = 3
 u0_aug = Float32[u0;zeros(hidden_dim)]
@@ -472,7 +468,7 @@ plt_loss = plot(loss_vec,label="log loss", title="Log loss function of 3-dim aug
                 xlabel="Iteration",yaxis=:log,ylabel="log loss")
 png(plt_loss,raw"ANODE\Figures\loss_lotka-volterra_aug_3dim.png")
 ```
-![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/lotka-Volterra_aug_3dim.gif?raw=true)
+![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/loss_lotka-volterra_aug_3dim.png?raw=true)
 
 The dynamics of the training looks much different and looks far more stable than
 the training the NODE with 1 added dimension and the training without any added
@@ -491,4 +487,4 @@ What is going on in the extra dimension? To investigate this we will add another
 varible to the Lotka Volterra and simulate the system. Then we will hide the data
 of the last varible and train an ANODE with one added dimension. Will the dynamics
 of the added dimension resemble that of the added varible? We will cover this
-in the next file. 
+in the next file.
