@@ -17,3 +17,15 @@ lol
 ss
 
 ![](ANODE/Figures/test_Violate.gif?raw=true)
+
+
+[^Perko] siger det her
+
+[^Dupont] siger det her
+
+[^Strauss] siger det her
+
+# References
+[^Perko]:Perko, Lawrence, *Differential equations and dynamical systems*, Vol 7 Springer Science & Business Media, 2013
+[^Dupont]: Dupont, Emilien and Doucet, Arnaud and Teh, Yee Whye, *Augmented Neural ODEs*, arXiv preprint arXiv:1904.01681, 2019
+[^Strauss]:Strauss, Robert *Augmenting Neural Differential Equations to Model Unknown Dynamical Systems with Incomplete State Information*, arXiv:2008.08226, 2020
