@@ -1,0 +1,229 @@
+---
+title: What is in the $p$ dimensions
+author: Anton Ruby Larsen and Nicolaj Hans Nielsen
+date: February 12th, 2021
+---
+
+```julia
+using Flux, DiffEqFlux, OrdinaryDiffEq, Optim, Plots
+```
+
+Consider a forest where we monitor the rabbit and the wolf population because we
+think they are the most vital part of the system and because they are easy to monitor.
+However, in reality there are hidden bears around that greatly affects the population
+of the other two species.
+
+With only the data from the rabbit and wolf populations, will he neural ODE be able
+to encapsulate the dynamics even without knowledge of the existance of the
+extra variable? Say we use a augmented neural ODE with one added dimension,
+would the dynamics of the added dimension resemble that of the real bear dynamics?
+
+In the following we will:
+
+1. Introduce bears to the Lotka-Volterra equation
+
+2. See if the augmented neural ODE can encapsulate the dynamics with bears as
+an unknown variable
+
+3. Compare the real bear dynamics with that of the augmented ODE
+
+## 1. Introducing bears
+
+We will now Introduce bears and to be consistant with the notation let `x` be
+*rabbits*, `y` be *wolfs* and `z` be *bears* and define the system as:
+
+
+```math
+\frac{\mathrm{d}}{\mathrm{d}t}x=αx-βxy-ζxz  \\
+\frac{\mathrm{d}y}{\mathrm{d}t}=-γy+δxy-ηyz \\
+\frac{\mathrm{d}z}{\mathrm{d}t}=-κz+λxz+μyz
+```
+
+
+we can directly define a function in julia:
+
+```julia
+function lotka_volt_bear(du,u,p,t)
+  x, y,z = u
+  α ,β, ζ, γ, δ, η, κ, λ, μ= p'
+  du[1] = dx = α*x - β*x*y - ζ*x*z
+  du[2] = dy =  - γ*y + δ*x*y  -η*y*z
+  du[3] = dz = - κ*z + λ*x*z + μ*y*z
+end
+```
+
+here `p` is a matrix which is defined s.t. one can easily adjust the parameters.
+Here we plot with the same parameteres as that of the Lotka-Volterra system and
+some arbitraraly chosen parameters for the interaction of bears for $t=[1,10]$:
+
+
+
+```julia
+u0 = Float32[ 2; 1; 1]
+p_ = [1.5 1 0.3;
+     2 1 0.3;
+     1.1 0.3 0.35]
+tspan = (0.0f0,10.0f0)
+datasize = 100
+t = range(tspan...,length=datasize)
+
+prob = ODEProblem(lotka_volt_bear, u0,tspan, p_)
+solution = solve(prob,Tsit5(), saveat = t)
+plot(solution,label=["x" "y" "z"],xlabel="t",seriestype = :scatter,ylims=(0,3))
+```
+
+## 2. Augmented NODE
+
+We will now pretend we have no knowledge of the existance of bears or we might not
+have anticipated that they affected our dynamical system. We will, therefore, try
+to encapuslate the dynamics of the rabbits and wolfs without including dynamics of the
+bear. To do that, we will use an ANODE with one added dimension.
+
+We explicitly take out only the rabbits and wolfs:
+
+```julia
+data = solution[1:2,:]
+u0_🐺_🐰 = u0[1:2]
+```
+
+We define the architecture which is the same as in the [introduction](https://nicolajhmnielsen.github.io/SciML_DTU/ANODE/HTML/Augmented)
+to ANODE:
+
+```julia
+input_dim = size(u0_🐺_🐰)[1]
+hidden_dim = 1
+u0_aug = Float32[u0_🐺_🐰;zeros(hidden_dim)]
+
+NN = FastChain((x, p) -> x,
+                  FastDense(input_dim+hidden_dim, 32, swish),
+                  FastDense(32, 32, swish),
+                  FastDense(32, input_dim+hidden_dim))
+
+prob_neuralode = NeuralODE(NN, tspan, Tsit5(), saveat = t)
+
+function predict_neuralode(p)
+  Array(prob_neuralode(u0_aug, p))
+end
+```
+
+We use square loss and note we only do it until the input dimension as the augmented
+dimension should not be part of the loss function.
+
+```julia
+function loss_neuralode(p)
+    pred = predict_neuralode(p)
+    loss = sum(abs2, data .- pred[1:input_dim,:])
+    return loss, pred
+end
+```
+
+We now initialize an animation and set out max number of itarations to `1000`:
+
+
+```{julia, eval=false}
+iter = 0
+max_iter = 1000
+loss_vec = Array{Float32}(undef,max_iter+1)
+anim_bears = Animation()
+callback = function (p, l, pred)
+  global list_plots, iter, anim_lotka
+
+  # response in training progression
+  if iter%50 == 0
+    display("Loss of iteration $iter: $l")
+  end
+
+  # save loss (+1 as julia is 1-indexed)
+  loss_vec[iter+1] = l
+
+  # plot current prediction against data
+  plt = plot(t, data', label = ["x" "y"],seriestype = :scatter,
+                legend=:bottomright,color=[:blue :red],xlabel="t",ylims=(-4,5.5))
+  plot!(plt, t, pred', label = ["x NODE" "y NODE" "Aug dim"],color=[:blue :red :green])
+  frame(anim_bears)
+
+  iter += 1
+  return false
+end
+result_neuralode = DiffEqFlux.sciml_train(loss_neuralode, prob_neuralode.p,
+                                          ADAM(0.05), cb = callback,
+                                          maxiters = max_iter);
+```
+
+Something very interesing happend during the training which we can see in the loss
+function:
+
+```{julia,eval=false}
+plt_loss = plot(loss_vec,label="log loss", title="Log loss function",
+                xlabel="Iteration",yaxis=:log10,ylabel="log loss")
+png(plt_loss,raw"ANODE\Figures\Bears\loss_bears_aug_1dim.png")
+```
+
+```julia
+ #![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/loss_bears_aug_1dim.png?raw=true)
+```
+
+![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/loss_lotka-volterra_aug_1dim.png?raw=true)
+
+For a long time nothing happends untill the very end where the training suddenly
+explodes:
+
+```{julia, eval=false}
+gif(anim_bears,raw"ANODE\Figures\Bears\bear_aug_1dim.gif",fps=20)
+```
+
+```julia
+ #![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/bear_aug_1dim.gif?raw=true)
+```
+![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/lotka-volterra_aug_1dim.gif?raw=true)
+
+We now take out the computed solution and plot it at the end:
+
+```julia
+sol_nn=predict_neuralode(result_neuralode)
+plot(sol_nn')
+```
+
+
+We now try again: 
+
+```julia
+iter = 0
+loss_vec_2 = Array{Float32}(undef,max_iter+1)
+anim_bears_2 = Animation()
+callback = function (p, l, pred)
+  global list_plots, iter, anim_lotka
+
+  # response in training progression
+  if iter%50 == 0
+    display("Loss of iteration $iter: $l")
+  end
+
+  # save loss (+1 as julia is 1-indexed)
+  loss_vec_2[iter+1] = l
+
+  # plot current prediction against data
+  plt = plot(t, data', label = ["x" "y"],seriestype = :scatter,
+                legend=:bottomright,color=[:blue :red],xlabel="t",ylims=(-4,5.5))
+  plot!(plt, t, pred', label = ["x NODE" "y NODE" "Aug dim"],color=[:blue :red :green])
+  frame(anim_bears_2)
+
+  iter += 1
+  return false
+end
+
+result_neuralode_2 = DiffEqFlux.sciml_train(loss_neuralode, prob_neuralode.p,
+                                          ADAM(0.05), cb = callback,
+                                          maxiters = max_iter);
+
+```
+
+We see that have succesfully encapsulated the dynamics without knowing the existance
+of the bears.
+
+Lets watch the 3d trajectory
+
+## Compare added dimension with dynamics of bears
+
+Without the insights from above one could speculate the the hidden dimension
+would take on the dynamics of the real bears. Therefore, we compare the dynamics:
