@@ -1,11 +1,11 @@
 ---
 title: What is in the $p$ dimensions
 author: Anton Ruby Larsen and Nicolaj Hans Nielsen
-date: February 12th, 2021
+date: June 30th, 2021
 ---
 
 ```julia
-using Flux, DiffEqFlux, OrdinaryDiffEq, Optim, Plots
+using Flux, DiffEqFlux, OrdinaryDiffEq, Optim, Plots, Sundials, ODEInterfaceDiffEq
 ```
 
 Consider a forest where we monitor the rabbit and the wolf population because we
@@ -44,7 +44,7 @@ we can directly define a function in julia:
 
 ```julia
 function lotka_volt_bear(du,u,p,t)
-  x, y,z = u
+  x, y, z = u
   α ,β, ζ, γ, δ, η, κ, λ, μ= p'
   du[1] = dx = α*x - β*x*y - ζ*x*z
   du[2] = dy =  - γ*y + δ*x*y  -η*y*z
@@ -59,11 +59,11 @@ some arbitraraly chosen parameters for the interaction of bears for $t=[1,10]$:
 
 
 ```julia
-u0 = Float32[ 2; 1; 1]
+u0 = Float64[ 2; 1; 1.3]
 p_ = [1.5 1 0.3;
      2 1 0.3;
-     1.1 0.3 0.35]
-tspan = (0.0f0,10.0f0)
+     1.2 0.36 0.31]
+tspan = (0.0, 15.0)
 datasize = 100
 t = range(tspan...,length=datasize)
 
@@ -82,23 +82,24 @@ bear. To do that, we will use an ANODE with one added dimension.
 We explicitly take out only the rabbits and wolfs:
 
 ```julia
-data = solution[1:2,:]
+sol_🐺_🐰 = solution[1:2,:]
 u0_🐺_🐰 = u0[1:2]
 ```
 
-We define the architecture which is the same as in the [introduction](https://nicolajhmnielsen.github.io/SciML_DTU/ANODE/HTML/Augmented)
-to ANODE:
+We define the architecture which is the same as in the [introduction](https://nicolajhmnielsen.github.io/SciML_DTU/ANODE/HTML/Augmented).
+
 
 ```julia
 input_dim = size(u0_🐺_🐰)[1]
 hidden_dim = 1
-u0_aug = Float32[u0_🐺_🐰;zeros(hidden_dim)]
+u0_aug = Float64[u0_🐺_🐰;zeros(hidden_dim)]
 
 NN = FastChain((x, p) -> x,
                   FastDense(input_dim+hidden_dim, 32, swish),
                   FastDense(32, 32, swish),
                   FastDense(32, input_dim+hidden_dim))
 
+#prob_neuralode = NeuralODE(NN, tspan, Tsit5(), saveat = dt)
 prob_neuralode = NeuralODE(NN, tspan, Tsit5(), saveat = t)
 
 function predict_neuralode(p)
@@ -112,21 +113,24 @@ dimension should not be part of the loss function.
 ```julia
 function loss_neuralode(p)
     pred = predict_neuralode(p)
-    loss = sum(abs2, data .- pred[1:input_dim,:])
+    loss = sum(abs2, sol_lotka .- pred[1:input_dim,:])
     return loss, pred
 end
 ```
 
-We now initialize an animation and set out max number of itarations to `1000`:
+We now initialize an animation and set out max number of itarations to `1000` but
+with a max error of 2 using `adam`. If we find something below 2, we will switch
+and use `BFGS`:
 
 
 ```{julia, eval=false}
 iter = 0
-max_iter = 1000
-loss_vec = Array{Float32}(undef,max_iter+1)
+max_iter_adam = 1000
+max_iter_BFGS = 300
+loss_vec = Array{Float64}(undef,max_iter_adam+max_iter_BFGS+1)
 anim_bears = Animation()
 callback = function (p, l, pred)
-  global list_plots, iter, anim_lotka
+  global list_plots, iter, anim_bears
 
   # response in training progression
   if iter%50 == 0
@@ -137,7 +141,7 @@ callback = function (p, l, pred)
   loss_vec[iter+1] = l
 
   # plot current prediction against data
-  plt = plot(t, data', label = ["x" "y"],seriestype = :scatter,
+  plt = plot(t, (sol_🐺_🐰)', label = ["x" "y"],seriestype = :scatter,
                 legend=:bottomright,color=[:blue :red],xlabel="t",ylims=(-4,5.5))
   plot!(plt, t, pred', label = ["x NODE" "y NODE" "Aug dim"],color=[:blue :red :green])
   frame(anim_bears)
@@ -145,25 +149,56 @@ callback = function (p, l, pred)
   iter += 1
   return false
 end
-result_neuralode = DiffEqFlux.sciml_train(loss_neuralode, prob_neuralode.p,
+result_neuralode_adam = DiffEqFlux.sciml_train(loss_neuralode, prob_neuralode.p,
                                           ADAM(0.05), cb = callback,
-                                          maxiters = max_iter);
+                                          maxiters = max_iter_adam);
+gif(anim_bears,raw"ANODE\Figures\Bears\bear_aug_1dim_adam.gif",fps=20)
 ```
+
+We save the animation in the last line. Then we intialize the animation agian
+to see the training for the 300 iterations with `BFGS`. We will takeout the
+minimizer to far and use that
+
+
+```julia
+anim_bears = Animation()
+result_neuralode_BFGS = DiffEqFlux.sciml_train(loss_neuralode,
+                                          result_neuralode_adam.minimizer,
+                                          BFGS(initial_stepnorm=0.01),
+                                          cb = callback,
+                                          maxiters = 300);
+gif(anim_bears,raw"ANODE\Figures\Bears\bear_aug_1dim_bfgs.gif",fps=15)
+```
+
+
 
 Something very interesing happend during the training which we can see in the loss
 function:
 
 ```{julia,eval=false}
-plt_loss = plot(loss_vec,label="log loss", title="Log loss function",
-                xlabel="Iteration",yaxis=:log10,ylabel="log loss")
+plt_loss = plot(loss_vec[1:iter],
+                yaxis=:log,
+                label="log loss",
+                title="Log loss function",
+                xlabel="Iteration",
+                ylabel="log loss")
 png(plt_loss,raw"ANODE\Figures\Bears\loss_bears_aug_1dim.png")
 ```
 
-```julia
- #![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/loss_bears_aug_1dim.png?raw=true)
-```
+![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/loss_bears_aug_1dim.png?raw=true)
 
-![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/loss_lotka-volterra_aug_1dim.png?raw=true)
+We see that the errors drops drastically using adam and after 1000 iterations where
+we use the `BFGS` it also steady decreases. Visually the training with `ADAM` and
+the first 1000 iterations looks like:
+
+
+![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/bear_aug_1dim_adam.gif?raw=true)
+
+and for the `BFGS`
+
+![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/bear_aug_1dim_bfgs.gif?raw=true)
+
+
 
 For a long time nothing happends untill the very end where the training suddenly
 explodes:
@@ -185,7 +220,7 @@ plot(sol_nn')
 ```
 
 
-We now try again: 
+We now try again:
 
 ```julia
 iter = 0
@@ -213,7 +248,7 @@ callback = function (p, l, pred)
 end
 
 result_neuralode_2 = DiffEqFlux.sciml_train(loss_neuralode, prob_neuralode.p,
-                                          ADAM(0.05), cb = callback,
+                                          ADAM(2.0), cb = callback,
                                           maxiters = max_iter);
 
 ```
