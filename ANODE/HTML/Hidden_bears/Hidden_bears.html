@@ -865,7 +865,7 @@ div.title {text-align: center;}
 <p>We see that the dynamics we get in the augmented dimension do not directly the same as the bears. The period of the oscillations seems to be close but the magnitude and phase are not as close. It seems that the dynamics in the augmented dimension is not entirely random but neither can it be used to directly find the dynamics of external or unknown variables of the system.</p>
 <h2>Discussion</h2>
 <p>In the following, we will see what happens when if adjust the initial condition and simulate outside <span class="math">$t=[0,15]$</span></p>
-<h2>Intial conditions</h2>
+<h4>Intial conditions</h4>
 <p>We see that elements of the bear dynamics is encapsulated and therefore one could try to bias the model to better do so. In <a href="#footnote-Strauss" class="footnote">[Strauss]</a> they enforce the correct bear  initial condition during training instead of just 0 for the augmented dimension but with no significant effect. However, we will now see what happens if we let our trained model start with the correct intial condition:</p>
 
 
@@ -881,15 +881,13 @@ div.title {text-align: center;}
 </span><span class='hljl-n'>plt_pred_init</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>plot!</span><span class='hljl-p'>(</span><span class='hljl-n'>plt_sys_init</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>t</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>prediction_init_bear</span><span class='hljl-oB'>&#39;</span><span class='hljl-p'>,</span><span class='hljl-t'>
                 </span><span class='hljl-n'>label</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-p'>[</span><span class='hljl-s'>&quot;x NODE&quot;</span><span class='hljl-t'> </span><span class='hljl-s'>&quot;y NODE&quot;</span><span class='hljl-t'> </span><span class='hljl-s'>&quot;Aug dim&quot;</span><span class='hljl-p'>],</span><span class='hljl-t'>
                 </span><span class='hljl-n'>color</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:blue</span><span class='hljl-t'> </span><span class='hljl-sc'>:red</span><span class='hljl-t'> </span><span class='hljl-sc'>:green</span><span class='hljl-p'>],</span><span class='hljl-t'>
-                </span><span class='hljl-n'>lw</span><span class='hljl-oB'>=</span><span class='hljl-ni'>3</span><span class='hljl-p'>)</span>
+                </span><span class='hljl-n'>lw</span><span class='hljl-oB'>=</span><span class='hljl-ni'>3</span><span class='hljl-p'>)</span><span class='hljl-t'>
+</span><span class='hljl-nf'>png</span><span class='hljl-p'>(</span><span class='hljl-n'>plt_pred_init</span><span class='hljl-p'>,</span><span class='hljl-so'>raw&quot;ANODE\Figures\Bears\init_same_bear.png&quot;</span><span class='hljl-p'>)</span>
 </pre>
 
 
-<pre class="julia-error">
-ERROR: UndefVarError: result_neuralode_BFGS not defined
-</pre>
-
-
+<p><img src="https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/init_same_bear.png?raw&#61;true" alt="" /></p>
+<p>The correct initial condition does not resolve the wrong magnitude in the oscillations of the added dimension, however, it makes our added dimension start at the right spot.</p>
 <p>We now try 3 different initial conditions. We increase the initial condition for each of the variables one at a time and fix the others. We trained with <span class="math">$u_0=\{2,1,1.3\}$</span> and now try</p>
 <ol>
 <li><p>Set <span class="math">$x_0=3$</span> s.t. <span class="math">$u_0=\{3,1,1.3\}$</span></p>
