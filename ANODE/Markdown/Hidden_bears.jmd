@@ -1,5 +1,5 @@
 ---
-title: What is in the $p$ dimensions
+title: What is in the $p$ dimensions?
 author: Anton Ruby Larsen and Nicolaj Hans Nielsen
 date: June 30th, 2021
 ---
@@ -8,29 +8,30 @@ date: June 30th, 2021
 using Flux, DiffEqFlux, OrdinaryDiffEq, Optim, Plots, Sundials, ODEInterfaceDiffEq
 ```
 
+## Introduction
 Consider a forest where we monitor the rabbit and the wolf population because we
 think they are the most vital part of the system and because they are easy to monitor.
-However, in reality there are hidden bears around that greatly affects the population
+However, in reality, there are hidden bears around that affect the population
 of the other two species.
 
-With only the data from the rabbit and wolf populations, will he neural ODE be able
-to encapsulate the dynamics even without knowledge of the existance of the
-extra variable? Say we use a augmented neural ODE with one added dimension,
+With only the data from the rabbit and wolf populations, will the neural ODE be able
+to encapsulate the dynamics even without knowledge of the existence of the
+extra variable? Say we use an augmented neural ODE with one added dimension,
 would the dynamics of the added dimension resemble that of the real bear dynamics?
 
 In the following we will:
 
-1. Introduce bears to the Lotka-Volterra equation
+1. *Introduce bears to the Lotka-Volterra equation*
 
-2. See if the augmented neural ODE can encapsulate the dynamics with bears as
-an unknown variable
+2. *See if the augmented neural ODE can encapsulate the dynamics with bears as*
+*an unknown variable*
 
-3. Compare the real bear dynamics with that of the augmented NODE
+3. *Compare the real bear dynamics with that of the augmented NODE*
 
 ## 1. Introducing bears
 
-We will now Introduce bears and to be consistant with the notation let `x` be
-*rabbits*, `y` be *wolfs* and `z` be *bears* and define the system as:
+To be consistant with the notation of [the introduction to ANODE](https://nicolajhmnielsen.github.io/SciML_DTU/ANODE/HTML/Augmented),
+let `x` be *rabbits*, `y` be *wolfs* and `z` be *bears* and define the system as:
 
 
 ```math
@@ -39,8 +40,7 @@ We will now Introduce bears and to be consistant with the notation let `x` be
 \frac{\mathrm{d}z}{\mathrm{d}t}=-κz+λxz+μyz
 ```
 
-
-we can directly define a function in julia:
+which we implement in julia as
 
 ```{julia,eval=false}
 function lotka_volt_bear(du,u,p,t)
@@ -52,9 +52,11 @@ function lotka_volt_bear(du,u,p,t)
 end
 ```
 
-here `p` is a matrix which is defined s.t. one can easily adjust the parameters.
-Here we plot with the same parameteres as that of the Lotka-Volterra system and
-some arbitraraly chosen parameters for the interaction of bears for $t=[1,10]$:
+here `p` is a matrix of the parameters. The parameters for the interactions between
+rabbits and wolfs are the same as in [the introduction to ANODE](https://nicolajhmnielsen.github.io/SciML_DTU/ANODE/HTML/Augmented)
+and the parameters for the interaction of bears are chosen arbitrarily. We
+consider $t=[0.0,15.0]$, use the Tsitouras 5/4 Runge-Kutta method, `Tsit5()` and save
+`100` datapoints of the simulation.
 
 
 
@@ -74,10 +76,8 @@ plot(solution,label=["x" "y" "z"],xlabel="t",seriestype = :scatter,ylims=(0,3))
 
 ## 2. Augmented NODE
 
-We will now pretend we have no knowledge of the existance of bears or we might not
-have anticipated that they affected our dynamical system. We will, therefore, try
-to encapuslate the dynamics of the rabbits and wolfs without including dynamics of the
-bear. To do that, we will use an ANODE with one added dimension.
+We will now pretend we have no knowledge of the existence of bears or neglect their
+effect on the population of the rabbits and wolves.
 
 We explicitly take out only the rabbits and wolfs:
 
@@ -86,7 +86,9 @@ sol_🐺_🐰 = solution[1:2,:]
 u0_🐺_🐰 = u0[1:2]
 ```
 
-We define the architecture which is the same as in the [introduction](https://nicolajhmnielsen.github.io/SciML_DTU/ANODE/HTML/Augmented).
+We will try to find the dynamics of the rabbits and wolfs without including the dynamics of the
+bear. To do that, we will use an ANODE with one added dimension and use the
+architecture as in [introduction](https://nicolajhmnielsen.github.io/SciML_DTU/ANODE/HTML/Augmented).
 
 
 ```{julia,eval=false}
@@ -99,7 +101,6 @@ NN = FastChain((x, p) -> x,
                   FastDense(32, 32, swish),
                   FastDense(32, input_dim+hidden_dim))
 
-#prob_neuralode = NeuralODE(NN, tspan, Tsit5(), saveat = dt)
 prob_neuralode = NeuralODE(NN, tspan, Tsit5(), saveat = t)
 
 function predict_neuralode(p)
@@ -107,8 +108,7 @@ function predict_neuralode(p)
 end
 ```
 
-We use square loss and note we only do it until the input dimension as the augmented
-dimension should not be part of the loss function.
+We use square loss and note that we only take out the dimensions of interest `pred[1:input_dim,:]`
 
 ```{julia,eval=false}
 function loss_neuralode(p)
@@ -118,10 +118,10 @@ function loss_neuralode(p)
 end
 ```
 
-We now initialize an animation and set out max number of itarations to `1000` but
-with a max error of 2 using `adam`. If we find something below 2, we will switch
-and use `BFGS`:
-
+We will first do `1000` iterations with an `adam` optimizer with a learning rate of
+`0.05`. We take out the minimizer and do `300` iterations of `BFGS` or until convergence.
+We animate the training procedure for both the `adam` and `BFGS`
+optimizer and make one coherent loss function.
 
 ```{julia, eval=false}
 iter = 0
@@ -155,9 +155,9 @@ result_neuralode_adam = DiffEqFlux.sciml_train(loss_neuralode, prob_neuralode.p,
 gif(anim_bears,raw"ANODE\Figures\Bears\bear_aug_1dim_adam_3.gif",fps=20)
 ```
 
-We save the animation in the last line. Then we intialize the animation agian
-to see the training for the 300 iterations with `BFGS`. We will takeout the
-minimizer to far and use that
+We save the animation in the last line.
+
+We now do train with `BFGS` and therefore initialize the animation again.
 
 
 ```{julia,eval=false}
@@ -170,10 +170,7 @@ result_neuralode_BFGS = DiffEqFlux.sciml_train(loss_neuralode,
 gif(anim_bears,raw"ANODE\Figures\Bears\bear_aug_1dim_bfgs_3.gif",fps=10)
 ```
 
-
-
-Something very interesing happend during the training which we can see in the loss
-function:
+First, we examine the log-loss function
 
 ```{julia,eval=false}
 plt_loss = plot(loss_vec[1:iter],
@@ -185,41 +182,64 @@ plt_loss = plot(loss_vec[1:iter],
 png(plt_loss,raw"ANODE\Figures\Bears\loss_bears_aug_1dim_3.png")
 ```
 
-![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/loss_bears_aug_1dim.png?raw=true)
+![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/loss_bears_aug_1dim_3.png?raw=true)
 
-We see that the errors drops drastically using adam and after 1000 iterations where
-we use the `BFGS` it also steady decreases. Visually the training with `ADAM` and
-the first 1000 iterations looks like:
+During the first `1000` iterations with the `adam` we see some fluctuations in the loss functions
+as it tried new neighborhoods, however, we also see longs periods of stagnation.
+When we use the minimizer of the `adam` after 1000 iterations we see how the `BFGS` optimizer
+steadily decreases the loss function.
 
+#### animation of training
 
-![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/bear_aug_1dim_adam.gif?raw=true)
+In this `gif` we see how the `adam` optimizer tries our multiple parameter settings but
+also gets stuck
+![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/bear_aug_1dim_adam_3.gif?raw=true)
 
-and for the `BFGS`
+the `BFGS` seems to more steadily close in the gaps
 
-![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/bear_aug_1dim_bfgs.gif?raw=true)
+![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/bear_aug_1dim_bfgs_3.gif?raw=true)
 
-
-
-We see that have succesfully encapsulated the dynamics of the rabits and the wolfs
- without knowing the existance of the bears.
+It seems that in the end, we encapsulate the rabbit and wolf dynamics really good
+and the added dimension moves around a bit arbitrarily.
 
 ```{julia,echo=false,eval=false}
+opt_par = result_neuralode_BFGS.minimizer
 io = open("params.txt", "w") do io
   for x in opt_par
     println(io, x)
   end
 end
-```
-
-```{julia,echo=false,eval=false}
-opt_par = result_neuralode_BFGS.minimizer
 predictions = predict_neuralode(result_neuralode_BFGS.minimizer)
-
-
 ```
+
+We can also consider the dynamics in the $(x,y)$ phase-space. To make the plot
+a more informative, we include the time dimension.
+
+```{julia,eval=false}
+anim_phase = @animate for i=1:100
+    plot(solution[1,1:i],solution[2,1:i],
+    label="true",
+    xlabel="x",
+    ylabel="y",
+    seriestype = :scatter,
+    ylims=(0.8,1.44),
+    xlims=(1.9,2.85))
+    plot!(predictions[1,1:i], predictions[2,1:i],
+    label="ANODE")
+end
+gif(anim_phase,raw"ANODE\Figures\Bears\phase_dyn.gif",fps=7)
+```
+
+
+![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/phase_dyn.gif?raw=true)
+
+Here we see in phase space that we can encapsulate the dynamics of the rabbits and wolfs
+quite well without knowledge and data from the bear population.
+
+
 ## 3. Compare added dimension with dynamics of bears
 
-We now plot the dynamics of the orginial system and that of the found NODE with the
+We now plot the dynamics of the orginal system and that of the found NODE with the
 bear dynamics unknown
 
 ```{julia, eval=false,echo=false}
@@ -250,22 +270,129 @@ png(plt_bear,raw"ANODE\Figures\Bears\compare_dynamics_bears_only.png")
 ```
 
 ![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/compare_dynamics.png?raw=true)
-![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/compare_dynamics_bears_only?raw=true)
+![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/compare_dynamics_bears_only.png?raw=true)
 
 
-We see that the dynamics we get in the augmented dimension does not directly the
-same as the bears. The period of the oscilations seems to be close but the magnitudes
-are not.
+We see that the dynamics we get in the augmented dimension do not directly the
+same as the bears. The period of the oscillations seems to be close but the magnitude
+and phase are not as close. It seems that the dynamics in the augmented dimension is not entirely random but
+neither can it be used to directly find the dynamics of external or unknown variables
+of the system.
+
+
+
 
 ## Discussion
 
+In the following, we will see what happens when if adjust the initial condition and
+simulate outside $t=[0,15]$
+
+## Intial conditions
 We see that elements of the bear dynamics is encapsulated and therefore one could
 try to bias the model to better do so. In [^Strauss] they enforce the correct bear
- initial condition instead of just 0 for the augmented dimension but with no significant effect.
+ initial condition during training instead of just 0 for the augmented dimension but with no significant effect.
+However, we will now see what happens if we let our trained model start with the correct
+intial condition:
 
-It seems that the dynamics in the augmented dimension is not entirely random but
-neither can it be used to directly find the dynamics of external or unknown variables
-of the system.
+```julia
+prediction_init_bear = Array(prob_neuralode(u0, result_neuralode_BFGS.minimizer))
+plt_sys_init = plot(t,solution[1:3,:]',
+                label=["x" "y" "z"],
+                xlabel="t",
+                seriestype = :scatter,
+                ylims=(0,4.5),
+                legend=:topright,
+                title="Correct initial condition for added dimension")
+plt_pred_init = plot!(plt_sys_init, t, prediction_init_bear',
+                label = ["x NODE" "y NODE" "Aug dim"],
+                color=[:blue :red :green],
+                lw=3)
+```
+
+We now try 3 different initial conditions. We increase the initial condition for each of the
+variables one at a time and fix the others. We trained with $u_0=\{2,1,1.3\}$ and now try
+
+1. Set $x_0=3$ s.t. $u_0=\{3,1,1.3\}$
+2. Set $y_0=1.5$ s.t. $u_0=\{2,1.5,1.3\}$
+3. Set $z_0=2$ s.t.  $u_0=\{2,1,2\}$
+
+```{julia, echo=false,eval=false}
+
+u0_init = Float64[3; 1 ;  1.3;
+                  2; 1.5; 1.3;
+                  2; 1  ; 2]
+prob_init = ODEProblem(lotka_volt_bear, u0_init[7:9],tspan, p_)
+solution_init = solve(prob_init,Tsit5(), saveat = t)
+
+prediction_init = Array(prob_neuralode([u0_init[7:8];0], result_neuralode_BFGS.minimizer))
+
+plt_sys_init = plot(t,solution_init[1:3,:]',
+                label=["x" "y" "z"],
+                xlabel="t",
+                seriestype = :scatter,
+                ylims=(0,5),
+                legend=:topright,
+                title="\$z_0=2\$")
+plt_pred_init = plot!(plt_sys_init, t, prediction_init',
+                label = ["x NODE" "y NODE" "Aug dim"],
+                color=[:blue :red :green],
+                lw=3)
+
+png(plt_pred_init,raw"ANODE\Figures\Bears\init_z0_2.png")
+```
+
+
+![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/init_x0_3.png?raw=true)
+![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/init_y0_1d5.png?raw=true)
+![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/init_z0_2.png?raw=true)
+
+The initial condition were arbitrarily chosen, however, we see that the model cannot
+perfectly generalize to new initial conditions and when we tested very different initial
+conditions, the predictions were wrose. This suggests that one should run multiple trajectories
+with different initial conditions for the model to be able to generalize better.
+
+#### long time behavior
+We now check what happens if set $t=[0.0,70]$ without retraining to see the long time
+behaviour
+
+```{julia, eval=false,echo=false}
+u0 = Float64[ 2; 1; 1.3]
+p_ = [1.5 1 0.3;
+     2 1 0.3;
+     1.2 0.36 0.31]
+tspan_long = (0.0, 70.0)
+datasize = 1000
+t_long = range(tspan_long...,length=datasize)
+
+prob = ODEProblem(lotka_volt_bear, u0,tspan_long, p_)
+solution_long = solve(prob,Tsit5(), saveat = t_long)
+
+
+prob_neuralode_long = NeuralODE(NN, tspan_long, Tsit5(), saveat = t_long)
+prediction_long = Array(prob_neuralode_long(u0_aug, result_neuralode_BFGS.minimizer))
+```
+
+```{julia, eval=false,echo=false}
+plt_sys_long = plot(t_long,solution_long[1:3,:]',
+                label=["x" "y" "z"],
+                xlabel="t",
+                seriestype = :scatter,
+                ylims=(0,4.5),
+                legend=:topright,
+                title="Comparison of the dynamics")
+plt_pred_long = plot!(plt_sys_long, t_long, prediction_long',
+                label = ["x NODE" "y NODE" "Aug dim"],
+                color=[:blue :red :green],
+                lw=3)
+png(plt_pred_long,raw"ANODE\Figures\Bears\compare_dynamics_70.png")
+```
+
+![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/compare_dynamics_70.png?raw=true)
+
+We trained only on $t=[0,15]$ hence the model was not presented to the data of the
+increasing bear population. The dynamics in the added dimension start to deviate
+greatly for $t>15$ and in turn, the rabbit and wolf population also start to differ.
+To improve this, one could also let the simulation run for longer periods.
 
 
 

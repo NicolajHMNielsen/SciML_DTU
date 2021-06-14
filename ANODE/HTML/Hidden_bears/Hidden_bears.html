@@ -3,7 +3,7 @@
 <HEAD>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-  <title>What is in the $p$ dimensions</title>
+  <title>What is in the $p$ dimensions?</title>
   
 
   <script type="text/x-mathjax-config">
@@ -653,7 +653,7 @@ div.title {text-align: center;}
     <div class = "row">
       <div class = "col-md-12 twelve columns">
         <div class="title">
-          <h1 class="title">What is in the $p$ dimensions</h1>
+          <h1 class="title">What is in the $p$ dimensions?</h1>
           <h5>Anton Ruby Larsen and Nicolaj Hans Nielsen</h5>
           <h5>June 30th, 2021</h5>
         </div>
@@ -664,28 +664,29 @@ div.title {text-align: center;}
 </pre>
 
 
-<p>Consider a forest where we monitor the rabbit and the wolf population because we think they are the most vital part of the system and because they are easy to monitor. However, in reality there are hidden bears around that greatly affects the population of the other two species.</p>
-<p>With only the data from the rabbit and wolf populations, will he neural ODE be able to encapsulate the dynamics even without knowledge of the existance of the extra variable? Say we use a augmented neural ODE with one added dimension, would the dynamics of the added dimension resemble that of the real bear dynamics?</p>
+<h2>Introduction</h2>
+<p>Consider a forest where we monitor the rabbit and the wolf population because we think they are the most vital part of the system and because they are easy to monitor. However, in reality, there are hidden bears around that affect the population of the other two species.</p>
+<p>With only the data from the rabbit and wolf populations, will the neural ODE be able to encapsulate the dynamics even without knowledge of the existence of the extra variable? Say we use an augmented neural ODE with one added dimension, would the dynamics of the added dimension resemble that of the real bear dynamics?</p>
 <p>In the following we will:</p>
 <ol>
-<li><p>Introduce bears to the Lotka-Volterra equation</p>
+<li><p><em>Introduce bears to the Lotka-Volterra equation</em></p>
 </li>
-<li><p>See if the augmented neural ODE can encapsulate the dynamics with bears as</p>
+<li><p><em>See if the augmented neural ODE can encapsulate the dynamics with bears as</em></p>
 </li>
 </ol>
-<p>an unknown variable</p>
+<p><em>an unknown variable</em></p>
 <ol start="3">
-<li><p>Compare the real bear dynamics with that of the augmented ODE</p>
+<li><p><em>Compare the real bear dynamics with that of the augmented NODE</em></p>
 </li>
 </ol>
 <h2>1. Introducing bears</h2>
-<p>We will now Introduce bears and to be consistant with the notation let <code>x</code> be <em>rabbits</em>, <code>y</code> be <em>wolfs</em> and <code>z</code> be <em>bears</em> and define the system as:</p>
+<p>To be consistant with the notation of <a href="https://nicolajhmnielsen.github.io/SciML_DTU/ANODE/HTML/Augmented">the introduction to ANODE</a>, let <code>x</code> be <em>rabbits</em>, <code>y</code> be <em>wolfs</em> and <code>z</code> be <em>bears</em> and define the system as:</p>
 <p class="math">\[
 \frac{\mathrm{d}}{\mathrm{d}t}x=αx-βxy-ζxz  \\
 \frac{\mathrm{d}y}{\mathrm{d}t}=-γy+δxy-ηyz \\
 \frac{\mathrm{d}z}{\mathrm{d}t}=-κz+λxz+μyz
 \]</p>
-<p>we can directly define a function in julia:</p>
+<p>which we implement in julia as</p>
 
 
 <pre class='hljl'>
@@ -699,7 +700,7 @@ div.title {text-align: center;}
 </pre>
 
 
-<p>here <code>p</code> is a matrix which is defined s.t. one can easily adjust the parameters. Here we plot with the same parameteres as that of the Lotka-Volterra system and some arbitraraly chosen parameters for the interaction of bears for <span class="math">$t=[1,10]$</span>:</p>
+<p>here <code>p</code> is a matrix of the parameters. The parameters for the interactions between rabbits and wolfs are the same as in <a href="https://nicolajhmnielsen.github.io/SciML_DTU/ANODE/HTML/Augmented">the introduction to ANODE</a> and the parameters for the interaction of bears are chosen arbitrarily. We consider <span class="math">$t=[0.0,15.0]$</span>, use the Tsitouras 5/4 Runge-Kutta method, <code>Tsit5&#40;&#41;</code> and save <code>100</code> datapoints of the simulation.</p>
 
 
 <pre class='hljl'>
@@ -718,7 +719,7 @@ div.title {text-align: center;}
 
 
 <h2>2. Augmented NODE</h2>
-<p>We will now pretend we have no knowledge of the existance of bears or we might not have anticipated that they affected our dynamical system. We will, therefore, try to encapuslate the dynamics of the rabbits and wolfs without including dynamics of the bear. To do that, we will use an ANODE with one added dimension.</p>
+<p>We will now pretend we have no knowledge of the existence of bears or neglect their effect on the population of the rabbits and wolves.</p>
 <p>We explicitly take out only the rabbits and wolfs:</p>
 
 
@@ -728,7 +729,7 @@ div.title {text-align: center;}
 </pre>
 
 
-<p>We define the architecture which is the same as in the <a href="https://nicolajhmnielsen.github.io/SciML_DTU/ANODE/HTML/Augmented">introduction</a>.</p>
+<p>We will try to find the dynamics of the rabbits and wolfs without including the dynamics of the bear. To do that, we will use an ANODE with one added dimension and use the architecture as in <a href="https://nicolajhmnielsen.github.io/SciML_DTU/ANODE/HTML/Augmented">introduction</a>.</p>
 
 
 <pre class='hljl'>
@@ -741,7 +742,6 @@ div.title {text-align: center;}
                   </span><span class='hljl-nf'>FastDense</span><span class='hljl-p'>(</span><span class='hljl-ni'>32</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-ni'>32</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>swish</span><span class='hljl-p'>),</span><span class='hljl-t'>
                   </span><span class='hljl-nf'>FastDense</span><span class='hljl-p'>(</span><span class='hljl-ni'>32</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>input_dim</span><span class='hljl-oB'>+</span><span class='hljl-n'>hidden_dim</span><span class='hljl-p'>))</span><span class='hljl-t'>
 
-</span><span class='hljl-cs'>#prob_neuralode = NeuralODE(NN, tspan, Tsit5(), saveat = dt)</span><span class='hljl-t'>
 </span><span class='hljl-n'>prob_neuralode</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>NeuralODE</span><span class='hljl-p'>(</span><span class='hljl-n'>NN</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>tspan</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-nf'>Tsit5</span><span class='hljl-p'>(),</span><span class='hljl-t'> </span><span class='hljl-n'>saveat</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-n'>t</span><span class='hljl-p'>)</span><span class='hljl-t'>
 
 </span><span class='hljl-k'>function</span><span class='hljl-t'> </span><span class='hljl-nf'>predict_neuralode</span><span class='hljl-p'>(</span><span class='hljl-n'>p</span><span class='hljl-p'>)</span><span class='hljl-t'>
@@ -750,19 +750,19 @@ div.title {text-align: center;}
 </pre>
 
 
-<p>We use square loss and note we only do it until the input dimension as the augmented dimension should not be part of the loss function.</p>
+<p>We use square loss and note that we only take out the dimensions of interest <code>pred&#91;1:input_dim,:&#93;</code></p>
 
 
 <pre class='hljl'>
 <span class='hljl-k'>function</span><span class='hljl-t'> </span><span class='hljl-nf'>loss_neuralode</span><span class='hljl-p'>(</span><span class='hljl-n'>p</span><span class='hljl-p'>)</span><span class='hljl-t'>
     </span><span class='hljl-n'>pred</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>predict_neuralode</span><span class='hljl-p'>(</span><span class='hljl-n'>p</span><span class='hljl-p'>)</span><span class='hljl-t'>
-    </span><span class='hljl-n'>loss</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>sum</span><span class='hljl-p'>(</span><span class='hljl-n'>abs2</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>sol_lotka</span><span class='hljl-t'> </span><span class='hljl-oB'>.-</span><span class='hljl-t'> </span><span class='hljl-n'>pred</span><span class='hljl-p'>[</span><span class='hljl-ni'>1</span><span class='hljl-oB'>:</span><span class='hljl-n'>input_dim</span><span class='hljl-p'>,</span><span class='hljl-oB'>:</span><span class='hljl-p'>])</span><span class='hljl-t'>
+    </span><span class='hljl-n'>loss</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>sum</span><span class='hljl-p'>(</span><span class='hljl-n'>abs2</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>sol_🐺_🐰</span><span class='hljl-t'> </span><span class='hljl-oB'>.-</span><span class='hljl-t'> </span><span class='hljl-n'>pred</span><span class='hljl-p'>[</span><span class='hljl-ni'>1</span><span class='hljl-oB'>:</span><span class='hljl-n'>input_dim</span><span class='hljl-p'>,</span><span class='hljl-oB'>:</span><span class='hljl-p'>])</span><span class='hljl-t'>
     </span><span class='hljl-k'>return</span><span class='hljl-t'> </span><span class='hljl-n'>loss</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>pred</span><span class='hljl-t'>
 </span><span class='hljl-k'>end</span>
 </pre>
 
 
-<p>We now initialize an animation and set out max number of itarations to <code>1000</code> but with a max error of 2 using <code>adam</code>. If we find something below 2, we will switch and use <code>BFGS</code>:</p>
+<p>We will first do <code>1000</code> iterations with an <code>adam</code> optimizer with a learning rate of <code>0.05</code>. We take out the minimizer and do <code>300</code> iterations of <code>BFGS</code> or until convergence. We animate the training procedure for both the <code>adam</code> and <code>BFGS</code> optimizer and make one coherent loss function.</p>
 
 
 <pre class='hljl'>
@@ -794,25 +794,26 @@ div.title {text-align: center;}
 </span><span class='hljl-n'>result_neuralode_adam</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-n'>DiffEqFlux</span><span class='hljl-oB'>.</span><span class='hljl-nf'>sciml_train</span><span class='hljl-p'>(</span><span class='hljl-n'>loss_neuralode</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>prob_neuralode</span><span class='hljl-oB'>.</span><span class='hljl-n'>p</span><span class='hljl-p'>,</span><span class='hljl-t'>
                                           </span><span class='hljl-nf'>ADAM</span><span class='hljl-p'>(</span><span class='hljl-nfB'>0.05</span><span class='hljl-p'>),</span><span class='hljl-t'> </span><span class='hljl-n'>cb</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-n'>callback</span><span class='hljl-p'>,</span><span class='hljl-t'>
                                           </span><span class='hljl-n'>maxiters</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-n'>max_iter_adam</span><span class='hljl-p'>);</span><span class='hljl-t'>
-</span><span class='hljl-nf'>gif</span><span class='hljl-p'>(</span><span class='hljl-n'>anim_bears</span><span class='hljl-p'>,</span><span class='hljl-so'>raw&quot;ANODE\Figures\Bears\bear_aug_1dim_adam.gif&quot;</span><span class='hljl-p'>,</span><span class='hljl-n'>fps</span><span class='hljl-oB'>=</span><span class='hljl-ni'>20</span><span class='hljl-p'>)</span>
+</span><span class='hljl-nf'>gif</span><span class='hljl-p'>(</span><span class='hljl-n'>anim_bears</span><span class='hljl-p'>,</span><span class='hljl-so'>raw&quot;ANODE\Figures\Bears\bear_aug_1dim_adam_3.gif&quot;</span><span class='hljl-p'>,</span><span class='hljl-n'>fps</span><span class='hljl-oB'>=</span><span class='hljl-ni'>20</span><span class='hljl-p'>)</span>
 </pre>
 
 
-<p>We save the animation in the last line. Then we intialize the animation agian to see the training for the 300 iterations with <code>BFGS</code>. We will takeout the minimizer to far and use that</p>
+<p>We save the animation in the last line.</p>
+<p>We now do train with <code>BFGS</code> and therefore initialize the animation again.</p>
 
 
 <pre class='hljl'>
 <span class='hljl-n'>anim_bears</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>Animation</span><span class='hljl-p'>()</span><span class='hljl-t'>
 </span><span class='hljl-n'>result_neuralode_BFGS</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-n'>DiffEqFlux</span><span class='hljl-oB'>.</span><span class='hljl-nf'>sciml_train</span><span class='hljl-p'>(</span><span class='hljl-n'>loss_neuralode</span><span class='hljl-p'>,</span><span class='hljl-t'>
                                           </span><span class='hljl-n'>result_neuralode_adam</span><span class='hljl-oB'>.</span><span class='hljl-n'>minimizer</span><span class='hljl-p'>,</span><span class='hljl-t'>
-                                          </span><span class='hljl-nf'>BFGS</span><span class='hljl-p'>(</span><span class='hljl-n'>initial_stepnorm</span><span class='hljl-oB'>=</span><span class='hljl-nfB'>0.01</span><span class='hljl-p'>),</span><span class='hljl-t'>
+                                          </span><span class='hljl-nf'>BFGS</span><span class='hljl-p'>(</span><span class='hljl-n'>initial_stepnorm</span><span class='hljl-oB'>=</span><span class='hljl-nfB'>0.05</span><span class='hljl-p'>),</span><span class='hljl-t'>
                                           </span><span class='hljl-n'>cb</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-n'>callback</span><span class='hljl-p'>,</span><span class='hljl-t'>
                                           </span><span class='hljl-n'>maxiters</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-ni'>300</span><span class='hljl-p'>);</span><span class='hljl-t'>
-</span><span class='hljl-nf'>gif</span><span class='hljl-p'>(</span><span class='hljl-n'>anim_bears</span><span class='hljl-p'>,</span><span class='hljl-so'>raw&quot;ANODE\Figures\Bears\bear_aug_1dim_bfgs.gif&quot;</span><span class='hljl-p'>,</span><span class='hljl-n'>fps</span><span class='hljl-oB'>=</span><span class='hljl-ni'>15</span><span class='hljl-p'>)</span>
+</span><span class='hljl-nf'>gif</span><span class='hljl-p'>(</span><span class='hljl-n'>anim_bears</span><span class='hljl-p'>,</span><span class='hljl-so'>raw&quot;ANODE\Figures\Bears\bear_aug_1dim_bfgs_3.gif&quot;</span><span class='hljl-p'>,</span><span class='hljl-n'>fps</span><span class='hljl-oB'>=</span><span class='hljl-ni'>10</span><span class='hljl-p'>)</span>
 </pre>
 
 
-<p>Something very interesing happend during the training which we can see in the loss function:</p>
+<p>First, we examine the log-loss function</p>
 
 
 <pre class='hljl'>
@@ -822,26 +823,103 @@ div.title {text-align: center;}
                 </span><span class='hljl-n'>title</span><span class='hljl-oB'>=</span><span class='hljl-s'>&quot;Log loss function&quot;</span><span class='hljl-p'>,</span><span class='hljl-t'>
                 </span><span class='hljl-n'>xlabel</span><span class='hljl-oB'>=</span><span class='hljl-s'>&quot;Iteration&quot;</span><span class='hljl-p'>,</span><span class='hljl-t'>
                 </span><span class='hljl-n'>ylabel</span><span class='hljl-oB'>=</span><span class='hljl-s'>&quot;log loss&quot;</span><span class='hljl-p'>)</span><span class='hljl-t'>
-</span><span class='hljl-nf'>png</span><span class='hljl-p'>(</span><span class='hljl-n'>plt_loss</span><span class='hljl-p'>,</span><span class='hljl-so'>raw&quot;ANODE\Figures\Bears\loss_bears_aug_1dim.png&quot;</span><span class='hljl-p'>)</span>
+</span><span class='hljl-nf'>png</span><span class='hljl-p'>(</span><span class='hljl-n'>plt_loss</span><span class='hljl-p'>,</span><span class='hljl-so'>raw&quot;ANODE\Figures\Bears\loss_bears_aug_1dim_3.png&quot;</span><span class='hljl-p'>)</span>
 </pre>
 
 
-<p><img src="https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/loss_bears_aug_1dim.png?raw&#61;true" alt="" /></p>
-<p>We see that the errors drops drastically using adam and after 1000 iterations where we use the <code>BFGS</code> it also steady decreases. Visually the training with <code>ADAM</code> and the first 1000 iterations looks like:</p>
-<p><img src="https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/bear_aug_1dim_adam.gif?raw&#61;true" alt="" /></p>
-<p>and for the <code>BFGS</code></p>
-<p><img src="https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/bear_aug_1dim_bfgs.gif?raw&#61;true" alt="" /></p>
-<p>We see that have succesfully encapsulated the dynamics without knowing the existance of the bears.</p>
-<p>Lets watch the 3d trajectory</p>
-<h2>Compare added dimension with dynamics of bears</h2>
-<p>Without the insights from above one could speculate the the hidden dimension would take on the dynamics of the real bears. Therefore, we compare the dynamics:</p>
+<p><img src="https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/loss_bears_aug_1dim_3.png?raw&#61;true" alt="" /></p>
+<p>During the first <code>1000</code> iterations with the <code>adam</code> we see some fluctuations in the loss functions as it tried new neighborhoods, however, we also see longs periods of stagnation. When we use the minimizer of the <code>adam</code> after 1000 iterations we see how the <code>BFGS</code> optimizer steadily decreases the loss function.</p>
+<h4>animation of training</h4>
+<p>In this <code>gif</code> we see how the <code>adam</code> optimizer tries our multiple parameter settings but also gets stuck <img src="https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/bear_aug_1dim_adam_3.gif?raw&#61;true" alt="" /></p>
+<p>the <code>BFGS</code> seems to more steadily close in the gaps</p>
+<p><img src="https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/bear_aug_1dim_bfgs_3.gif?raw&#61;true" alt="" /></p>
+<p>It seems that in the end, we encapsulate the rabbit and wolf dynamics really good and the added dimension moves around a bit arbitrarily.</p>
+
+
+<p>We can also consider the dynamics in the <span class="math">$(x,y)$</span> phase-space. To make the plot a more informative, we include the time dimension.</p>
+
+
+<pre class='hljl'>
+<span class='hljl-n'>anim_phase</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nd'>@animate</span><span class='hljl-t'> </span><span class='hljl-k'>for</span><span class='hljl-t'> </span><span class='hljl-n'>i</span><span class='hljl-oB'>=</span><span class='hljl-ni'>1</span><span class='hljl-oB'>:</span><span class='hljl-ni'>100</span><span class='hljl-t'>
+    </span><span class='hljl-nf'>plot</span><span class='hljl-p'>(</span><span class='hljl-n'>solution</span><span class='hljl-p'>[</span><span class='hljl-ni'>1</span><span class='hljl-p'>,</span><span class='hljl-ni'>1</span><span class='hljl-oB'>:</span><span class='hljl-n'>i</span><span class='hljl-p'>],</span><span class='hljl-n'>solution</span><span class='hljl-p'>[</span><span class='hljl-ni'>2</span><span class='hljl-p'>,</span><span class='hljl-ni'>1</span><span class='hljl-oB'>:</span><span class='hljl-n'>i</span><span class='hljl-p'>],</span><span class='hljl-t'>
+    </span><span class='hljl-n'>label</span><span class='hljl-oB'>=</span><span class='hljl-s'>&quot;true&quot;</span><span class='hljl-p'>,</span><span class='hljl-t'>
+    </span><span class='hljl-n'>xlabel</span><span class='hljl-oB'>=</span><span class='hljl-s'>&quot;x&quot;</span><span class='hljl-p'>,</span><span class='hljl-t'>
+    </span><span class='hljl-n'>ylabel</span><span class='hljl-oB'>=</span><span class='hljl-s'>&quot;y&quot;</span><span class='hljl-p'>,</span><span class='hljl-t'>
+    </span><span class='hljl-n'>seriestype</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-sc'>:scatter</span><span class='hljl-p'>,</span><span class='hljl-t'>
+    </span><span class='hljl-n'>ylims</span><span class='hljl-oB'>=</span><span class='hljl-p'>(</span><span class='hljl-nfB'>0.8</span><span class='hljl-p'>,</span><span class='hljl-nfB'>1.44</span><span class='hljl-p'>),</span><span class='hljl-t'>
+    </span><span class='hljl-n'>xlims</span><span class='hljl-oB'>=</span><span class='hljl-p'>(</span><span class='hljl-nfB'>1.9</span><span class='hljl-p'>,</span><span class='hljl-nfB'>2.85</span><span class='hljl-p'>))</span><span class='hljl-t'>
+    </span><span class='hljl-nf'>plot!</span><span class='hljl-p'>(</span><span class='hljl-n'>predictions</span><span class='hljl-p'>[</span><span class='hljl-ni'>1</span><span class='hljl-p'>,</span><span class='hljl-ni'>1</span><span class='hljl-oB'>:</span><span class='hljl-n'>i</span><span class='hljl-p'>],</span><span class='hljl-t'> </span><span class='hljl-n'>predictions</span><span class='hljl-p'>[</span><span class='hljl-ni'>2</span><span class='hljl-p'>,</span><span class='hljl-ni'>1</span><span class='hljl-oB'>:</span><span class='hljl-n'>i</span><span class='hljl-p'>],</span><span class='hljl-t'>
+    </span><span class='hljl-n'>label</span><span class='hljl-oB'>=</span><span class='hljl-s'>&quot;ANODE&quot;</span><span class='hljl-p'>)</span><span class='hljl-t'>
+</span><span class='hljl-k'>end</span><span class='hljl-t'>
+</span><span class='hljl-nf'>gif</span><span class='hljl-p'>(</span><span class='hljl-n'>anim_phase</span><span class='hljl-p'>,</span><span class='hljl-so'>raw&quot;ANODE\Figures\Bears\phase_dyn.gif&quot;</span><span class='hljl-p'>,</span><span class='hljl-n'>fps</span><span class='hljl-oB'>=</span><span class='hljl-ni'>7</span><span class='hljl-p'>)</span>
+</pre>
+
+
+<p><img src="https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/phase_dyn.gif?raw&#61;true" alt="" /></p>
+<p>Here we see in phase space that we can encapsulate the dynamics of the rabbits and wolfs quite well without knowledge and data from the bear population.</p>
+<h2>3. Compare added dimension with dynamics of bears</h2>
+<p>We now plot the dynamics of the orginal system and that of the found NODE with the bear dynamics unknown</p>
+
+
+<p><img src="https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/compare_dynamics.png?raw&#61;true" alt="" /> <img src="https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/compare_dynamics_bears_only.png?raw&#61;true" alt="" /></p>
+<p>We see that the dynamics we get in the augmented dimension do not directly the same as the bears. The period of the oscillations seems to be close but the magnitude and phase are not as close. It seems that the dynamics in the augmented dimension is not entirely random but neither can it be used to directly find the dynamics of external or unknown variables of the system.</p>
+<h2>Discussion</h2>
+<p>In the following, we will see what happens when if adjust the initial condition and simulate outside <span class="math">$t=[0,15]$</span></p>
+<h2>Intial conditions</h2>
+<p>We see that elements of the bear dynamics is encapsulated and therefore one could try to bias the model to better do so. In <a href="#footnote-Strauss" class="footnote">[Strauss]</a> they enforce the correct bear  initial condition during training instead of just 0 for the augmented dimension but with no significant effect. However, we will now see what happens if we let our trained model start with the correct intial condition:</p>
+
+
+<pre class='hljl'>
+<span class='hljl-n'>prediction_init_bear</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>Array</span><span class='hljl-p'>(</span><span class='hljl-nf'>prob_neuralode</span><span class='hljl-p'>(</span><span class='hljl-n'>u0</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>result_neuralode_BFGS</span><span class='hljl-oB'>.</span><span class='hljl-n'>minimizer</span><span class='hljl-p'>))</span><span class='hljl-t'>
+</span><span class='hljl-n'>plt_sys_init</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>plot</span><span class='hljl-p'>(</span><span class='hljl-n'>t</span><span class='hljl-p'>,</span><span class='hljl-n'>solution</span><span class='hljl-p'>[</span><span class='hljl-ni'>1</span><span class='hljl-oB'>:</span><span class='hljl-ni'>3</span><span class='hljl-p'>,</span><span class='hljl-oB'>:</span><span class='hljl-p'>]</span><span class='hljl-oB'>&#39;</span><span class='hljl-p'>,</span><span class='hljl-t'>
+                </span><span class='hljl-n'>label</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-s'>&quot;x&quot;</span><span class='hljl-t'> </span><span class='hljl-s'>&quot;y&quot;</span><span class='hljl-t'> </span><span class='hljl-s'>&quot;z&quot;</span><span class='hljl-p'>],</span><span class='hljl-t'>
+                </span><span class='hljl-n'>xlabel</span><span class='hljl-oB'>=</span><span class='hljl-s'>&quot;t&quot;</span><span class='hljl-p'>,</span><span class='hljl-t'>
+                </span><span class='hljl-n'>seriestype</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-sc'>:scatter</span><span class='hljl-p'>,</span><span class='hljl-t'>
+                </span><span class='hljl-n'>ylims</span><span class='hljl-oB'>=</span><span class='hljl-p'>(</span><span class='hljl-ni'>0</span><span class='hljl-p'>,</span><span class='hljl-nfB'>4.5</span><span class='hljl-p'>),</span><span class='hljl-t'>
+                </span><span class='hljl-n'>legend</span><span class='hljl-oB'>=:</span><span class='hljl-n'>topright</span><span class='hljl-p'>,</span><span class='hljl-t'>
+                </span><span class='hljl-n'>title</span><span class='hljl-oB'>=</span><span class='hljl-s'>&quot;Correct initial condition for added dimension&quot;</span><span class='hljl-p'>)</span><span class='hljl-t'>
+</span><span class='hljl-n'>plt_pred_init</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>plot!</span><span class='hljl-p'>(</span><span class='hljl-n'>plt_sys_init</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>t</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>prediction_init_bear</span><span class='hljl-oB'>&#39;</span><span class='hljl-p'>,</span><span class='hljl-t'>
+                </span><span class='hljl-n'>label</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-p'>[</span><span class='hljl-s'>&quot;x NODE&quot;</span><span class='hljl-t'> </span><span class='hljl-s'>&quot;y NODE&quot;</span><span class='hljl-t'> </span><span class='hljl-s'>&quot;Aug dim&quot;</span><span class='hljl-p'>],</span><span class='hljl-t'>
+                </span><span class='hljl-n'>color</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-sc'>:blue</span><span class='hljl-t'> </span><span class='hljl-sc'>:red</span><span class='hljl-t'> </span><span class='hljl-sc'>:green</span><span class='hljl-p'>],</span><span class='hljl-t'>
+                </span><span class='hljl-n'>lw</span><span class='hljl-oB'>=</span><span class='hljl-ni'>3</span><span class='hljl-p'>)</span>
+</pre>
+
+
+<pre class="julia-error">
+ERROR: UndefVarError: result_neuralode_BFGS not defined
+</pre>
+
+
+<p>We now try 3 different initial conditions. We increase the initial condition for each of the variables one at a time and fix the others. We trained with <span class="math">$u_0=\{2,1,1.3\}$</span> and now try</p>
+<ol>
+<li><p>Set <span class="math">$x_0=3$</span> s.t. <span class="math">$u_0=\{3,1,1.3\}$</span></p>
+</li>
+<li><p>Set <span class="math">$y_0=1.5$</span> s.t. <span class="math">$u_0=\{2,1.5,1.3\}$</span></p>
+</li>
+<li><p>Set <span class="math">$z_0=2$</span> s.t.  <span class="math">$u_0=\{2,1,2\}$</span></p>
+</li>
+</ol>
+
+
+<p><img src="https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/init_x0_3.png?raw&#61;true" alt="" /> <img src="https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/init_y0_1d5.png?raw&#61;true" alt="" /> <img src="https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/init_z0_2.png?raw&#61;true" alt="" /></p>
+<p>The initial condition were arbitrarily chosen, however, we see that the model cannot perfectly generalize to new initial conditions and when we tested very different initial conditions, the predictions were wrose. This suggests that one should run multiple trajectories with different initial conditions for the model to be able to generalize better.</p>
+<h4>long time behavior</h4>
+<p>We now check what happens if set <span class="math">$t=[0.0,70]$</span> without retraining to see the long time behaviour</p>
+
+
+
+<p><img src="https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/compare_dynamics_70.png?raw&#61;true" alt="" /></p>
+<p>We trained only on <span class="math">$t=[0,15]$</span> hence the model was not presented to the data of the increasing bear population. The dynamics in the added dimension start to deviate greatly for <span class="math">$t>15$</span> and in turn, the rabbit and wolf population also start to differ. To improve this, one could also let the simulation run for longer periods.</p>
+<h1>References</h1>
+<div class="footnote" id="footnote-Strauss"><p class="footnote-title">Strauss</p><p>Strauss, Robert <em>Augmenting Neural Differential Equations to Model Unknown Dynamical Systems with Incomplete State Information</em>, arXiv:2008.08226, 2020</p>
+</div>
 
 
         <HR/>
         <div class="footer">
           <p>
             Published from <a href="Hidden_bears.jmd">Hidden_bears.jmd</a>
-            using <a href="http://github.com/JunoLab/Weave.jl">Weave.jl</a> v0.10.9 on 2021-06-13.
+            using <a href="http://github.com/JunoLab/Weave.jl">Weave.jl</a> v0.10.9 on 2021-06-14.
           </p>
         </div>
       </div>
