@@ -6,77 +6,93 @@ date: February 12th, 2021
 
 Initialize the needed packages in julia:
 
-```julia
-# for modeling:
+```{julia,eval=false}
 using Flux, DiffEqFlux, OrdinaryDiffEq, Optim, Plots
-# for images (only for html rendering)
-using Images, FileIO, ImageView
 ```
 
-In the initial analysis, we found that our neural ordinary differential equations, *NODE*,
+In the initial analysis, we found that our neural ordinary differential equations, **NODE**,
 sometimes suffered from long training time, instability in the training, and sometimes
-the end result was inaccurate. How come this be?
-
+the result was inaccurate. How come this be?
 
 * Is this because the NODE simply cannot represent the function?
 
 * If that is not the case, is there a way for us to improve the training of the NODE?
 
-## Functions ODEs cannot represent
-NODEs approximated the flow of a system of ODEs using a neural network hence it inherits
-some limitations and properties of systems of ODEs. Therefore, we will briefly cover
-some important properties for ODEs.
+In the following, we will address the first question with theoretical considerations
+and then introduce the augmented neural ordinary differential equation to see if it can
+alleviate our problems with training.
 
-### Existence and uniqueness for ODEs
+## 1. Functions ODEs cannot represent
+NODEs are essentially an ODE where the function that proscribes the dynamics
+is a neural network. From the *universal approximation theorem*, we know that
+neural networks can theoretically approximate any continuous to arbitrary precision.
+When these are built into the framework of ODEs, the NODE inherits limitations and
+properties of generic ODEs.
+
+#### Existence and uniqueness for ODEs
 Trajectories of ODEs **cannot** intersect in phase-space. This follows directly
 from the existence and uniqueness theorem, section 2.2, [^Perko]. The proof can
 be seen in *A.1*, [^Dupont].
 
-A simple way to understand this is to look at an example in 1-D ODE. Consider
-two solutions $H_1(t)$ and $H_2(t)$ with different intial condition $H_1(t_0)\neq H_2(t_0)$
-in some timespan $t=[t_0, t_1]$. Further let $P$ denote a point, with $H_1(t_p)=H_2(t_p)$.
-The situation is depicted below:
+A simple way to understand this is to look at an example in 1-D ODE.
+
+Consider two solutions $H_1(t)$ and $H_2(t)$ with different intial condition $H_1(t_0)\neq H_2(t_0)$
+in some timespan $t=[t_0, t_1]$. Further, let $P$ be an instance at time $t=t_b$ where
+ $H_1(t_p)=H_2(t_p)$. The instance is depicted below
 
 ![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/unique.png?raw=true)
 
-We now show why a violation of the existence and uniqueness theorem is problematic.
-Consider starting at $t_1$ and then move backward in time. This seems fine, until we reach
-$t=t_p$. Since the solutions intersect, we don't know which path to take if we
-continue moving backward in time. This ultimately means we could end up at arbitrary
-initial conditions. Likewise, if we look for $t_0 \rightarrow t_1$ at the point $t=t_p$,
-we will not know which path to take from there. We, therefore, see the necessity of
-the existence and uniqueness of our solutions.
+The intersection at $t=t_p$ is problematic and a direct violation of the existence and uniqueness theorem.
+**The reason** it is problematic can easily be seen if we start at $t_1$ and move
+back in time for each of the trajectories. This seems fine until we reach
+$t=t_p$ where the solutions intersect. None of the trajectories are unique and
+if we were to continued towards $t_0$, we would not be able to know which trajectory
+to follow. This ultimately means that we could end up at arbitrary
+initial conditions. Likewise different initial conditions could lead us down arbitrary
+trajectories for $t_0 \rightarrow t_1$ which would break down many physical systems
+derived from first principles as they heavily rely on the existence and uniqueness of our solutions.
 
-### Existence and uniqueness tested on neural ODEs
-The above theorem also holds for NODEs, however, it would be interesting to
-see what the model would do if presented for data that would obviously be
-well approximated by a function that violates this. Could this BlackBox somehow
-shortcircuit the condition put forward?
+#### Existence and uniqueness tested on neural ODEs
+As NODEs are built into the framework of ODEs, the existence and uniqueness theorem
+also holds here. To test this, we will present the model would for data that would obviously be
+well approximated by a function that violates the existence and uniqueness theorem.
+Could this BlackBox somehow shortcircuit the theorem?
 
-*NOTE: it is a quite constructed example, hence the implementation might not seem
+**Test of existance and uniqueness for NODE**
+*NOTE: it is quite a special case, hence the implementation might not seem
 entirely intuitive. Therefore, focus mainly on the graphical results*
 
+Consider some simple 1-D system and with two sets of data points
 
-Consider some simple 1-D system and with two sets of data points; $r = \{(0,1),(1,-1)\}$
-and $b=\{(0,-1),(1,1)\}$:
+$$
+\begin{align*}
+r &= \{(0,1),(1,-1)\} \\
+b &= \{(0,-1),(1,1)\}
+\end{align*}
+$$
 
-```julia
+
+```{julia, eval=false}
 r = Float32[1 -1]
 b = Float32[-1 1]
 data = vcat(r,b) # Float32[1.0 -1.0;
                  #        -1.0 1.0]
-plot(0:1, data', label = ["b" "r"],xlabel="t",seriestype = :scatter,legend=:left,markersize=5,color=[:blue :red],ylims=(-1.2,1.2))
+plot(0:1, data', label = ["b" "r"],xlabel="t",seriestype = :scatter,legend=:left,
+     markersize=5,color=[:blue :red],ylims=(-1.2,1.2))
 ```
 
-We now try to train a function that simultaneously fits some flow between the points
-of $r$ and $b$. Put in simple terms, take a blue pencil in one hand and a red
-pencil in the other hand. Put down the pencils at $t=0$ and connect the blue dots
-and the red dots without lifting the pensils or make the trajectories intersect.
-That is impossible to do well without any intersection of trajectories.
-However, we let the train the Neural ODE for 20 epochs to see what happens. First,
-define the neural ODE:
+![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/unique_setup.png?raw=true)
 
-```{julia, results="hidden"}
+We now try to train a function that simultaneously find a flow that maps $r$ and $b$ at
+time $t=0$ to the values at $t=1$. If the violation is not obvious, take a blue pencil in one hand and a red
+pencil in the other hand. Put down the pencils at $t=0$ and connect the blue dots
+and the red dots without lifting the pencils or crossing the lines.
+That is impossible to do well without any intersection of trajectories.
+However, we let the train the Neural ODE for 20 epochs to see what happens.
+
+First, define the neural ODE problem in julia
+
+```{julia, eval=false}
 tspan = (0.0f0, 1f0)
 tsteps = (0.0f0:0.01f0:1f0)
 datasize = length(tsteps)
@@ -86,17 +102,20 @@ dudt2 = FastChain((x, p) -> x,
                   FastDense(50, 1))
 prob_neuralode = NeuralODE(dudt2, tspan, Tsit5(), saveat = tsteps)
 ```
-then we define the prediction function where we stipulated both the starting points:
+then we define the prediction function where we simultaneously predict trajectories
+for $r$ and $b$
 
-```{julia, results="hidden"}
+```{julia, eval=false}
 function predict_neuralode(p)
-  vcat(Array(prob_neuralode(Array([r[1]]), p)),Array((prob_neuralode(Array([b[1]]), p))))
+  vcat(Array(prob_neuralode(Array([r[1]]), p)),
+      Array((prob_neuralode(Array([b[1]]), p)))
+      )
 end
 ```
 
-We only want to define the loss function the last prediction, i.e., at $t=1$:
+We only want the loss at the first and last values, i.e., at $t=\{0,1\}$:
 
-```{julia, results="hidden"}
+```{julia, eval=false}
 function loss_neuralode(p)
     pred = predict_neuralode(p)
     # note modified only to take out the first and last
@@ -107,22 +126,27 @@ end
 
 We define a call back function, i.e., a function we call by the end of each
 training epoch to track our training progression. At each epoch, we display the
-loss function and construct a plot and make it a frame in the animation, `anim`.
+values on which we train with the trajectories of our model so far. Each plot we
+make into a frame in an animation, `anim`.
 
-```{julia, results="hidden"}
+```{julia, eval=false}
 iter = 0
 anim = Animation()
 callback = function (p, l, pred; doplot = false)
   global list_plots, iter, anim
 
-  # display the loss
+  # display the loss in console at each 5. epoch
   if iter%5 == 0
   display("Loss of iteration $iter: $l")
   end
 
   # plot current prediction against data
-  plt = plot(0:1, data', label = ["b" "r"],xlabel="t",seriestype = :scatter,legend=:top,color=[:blue :red],ylims=(-1.2,1.2))
-  plot!(plt, tsteps, pred', label = ["b NODE" "r NODE"],legend=:top,color=[:blue :red])
+  plt = plot(0:1, data', label = ["b" "r"],xlabel="t",seriestype = :scatter,
+            legend=:top,color=[:blue :red],ylims=(-1.2,1.2))
+  plot!(plt, tsteps, pred', label = ["b NODE" "r NODE"],legend=:top,
+        color=[:blue :red])
+
+  # make the plot a frame in the animation
   frame(anim)
 
   iter += 1
@@ -131,8 +155,8 @@ callback = function (p, l, pred; doplot = false)
 end
 ```
 
-We then train for 20 epochs and explicitly see the value of the loss function after
-each epoch:
+We then train for at most 20 epochs with an `ADAM` optimizer with a learning rate
+of `0.05`
 
 ```{julia, eval=false}
 result_neuralode = DiffEqFlux.sciml_train(loss_neuralode, prob_neuralode.p,
@@ -147,7 +171,8 @@ display("Loss of iteration 15: 2.0020065")
 display("Loss of iteration 20: 2.0007248")
 ```
 
-Did the NODE allow trajectories to cross? This we check using the computed animation:
+Did the NODE allow trajectories to cross? This we check using the computed animation
+for the 20 training epochs
 
 ```{julia, eval=false}
 gif(anim,raw"ANODE\Figures\test_Violate.gif",fps=5)
@@ -156,50 +181,58 @@ gif(anim,raw"ANODE\Figures\test_Violate.gif",fps=5)
 
 
 
-We see that the approximated flow simply does not allow the intersection of the trajectories.
-This is a confirmation that the NODE indeed have the inherent properties of the ODE.
+The flow determined by the NODE does not allow the intersection of the trajectories.
+This demonstrates that the NODE has the inherent properties of the ODE and obeys
+the existence and uniqueness theorem.
 
 This is not always the case for ML algorithms that tries to mimic ODE behavior
-and properties. Another way to approximate a discrete dynamical system is
-using ResNet, however, here the architecture and setup are very different and it
-does not inherit the properties of the ODE. In [^Dupont] they also use the same toy example
-as above and show that the ResNet approximation allows for trajectories to cross.
-Sometimes NODEs are referred to as the continuous version of the ResNet.
+and properties. In the report, we discussed ResNet and RNN and that NODE can be seen
+as a way to parameterize the continuous transformation of the hidden states. In [^Dupont] they
+use the same toy example as above and show that the ResNet allows trajectories to cross.
 
 
-With the analysis above, we conclude that some functions cannot be approximated by
+**In the part above** we conclude that some functions cannot be approximated by
 a NODE due to the inherent properties of ODE flows. However, if we know that the
-function we are trying to approximate could be approximated by an ODE, then we can
-improve the training process. This we can do by expanding the solution space.
+data source, we try to formulate a model for could be approximated by an ODE, then we can
+use the NODE. Now we can try to improve the training process with the introduction of
+the augmented neural ODE.
 
 
-## Introducing augmented neural ODE
+## 2. Introducing augmented neural ODE
 
-When we train the neural network to approximate the flow of an ODE, the procedure
+When we train the neural network to approximate the dynamics of an ODE, the procedure
 runs many different combinations of weights and biases. As trajectories cannot
 cross in phase-space, we constraint the set of possible values of weights and biases.
 As the training is gradient-based, this means that sometimes we end up at local minima
 we cannot escape which in turn leads to poor approximations, huge computational cost, and complicated flows [^Dupont].
 To extend the possible combinations of weights and biases, we expand the space on which
-we learn and solve the ODE. We lift the points and trajectories from the space ${\rm I\!R}^{d}$
-to ${\rm I\!R}^{d+p}$. In the extra $p$ dimensions we can avoid the intersection of the
-trajectories, this leads to simpler flows, more stable training and increased accuracy.
+we learn the ODE flow. We lift the trajectories from ${\rm I\!R}^{d}$
+to ${\rm I\!R}^{d+p}$. In the extra $p$ dimensions the model has a larger playground which
+leads to simpler flows, more stable training, and increased accuracy.
 This is very well described and introduced in [^Dupont]. Experimentally the augmented Neural ODE has
 been shown to reduce the loss function, reduce the computational cost, improve stability and
 generalization when presented to different initial conditions [^Dupont][^Strauss].
 
-Let's consider a NODE and extend it to an augmented neural ODE, *ANODE*.
 
-We define the intial value problem, *IVP*:
+**Formally**
+Consider a NODE formulated in terms of an initial value problem, *IVP*
 
 ```math
 \frac{\mathrm{d}}{\mathrm{d}t}u(t)=f(u(t),t),
 \quad \quad \quad u(0)=u_0, \quad u_0 \in{\rm I\!R}^{d}
 ```
-Where `f(t)` is a neural network. We then
-introduce $\frac{\mathrm{d}}{\mathrm{d}t}a(t)=f(a(t),t)$,
-$a(0)=0$ with $a(t) \in{\rm I\!R}^{p}$ and vertically concatenate to obtain the
-augmented NODE problem:
+
+
+here $f$ is a neural network.
+
+We then introduce another IVP
+
+```math
+\frac{\mathrm{d}}{\mathrm{d}t}a(t)=f(a(t),t),
+\quad \quad \quad a(0)=0, \quad a_0 \in{\rm I\!R}^{p}
+```
+
+then we vertically concatenate both of the IVP problems to obtain the augmented NODE problem:
 
 
 $$
@@ -211,7 +244,7 @@ We can now train this ANODE and only make the predicted $u(t)$
 contribute to the loss function as this is the, $d$, dimensions in which our data
 reside. We test this in an example with the Lotka-Volterra:
 
-### Example with Lotka-Volterra
+#### Example with Lotka-Volterra
 
 We will now use the Lotka-Volterra to showcase how the ANODE works and look at the
 training pattern. We first define the Lotka-Volterra model, make
@@ -219,13 +252,14 @@ a simulation, and test how the NODE performs on the data from the simulation. Th
 augmented ODE problem and see how the ANODE performs and explore the training pattern
 when presented to the same data.
 
-### Define Lotka-Volterra model
 
-First define the Lotka-Volterra with parameters $\left[\alpha, \beta, \gamma, \delta \right]=[1.5, 1, 2, 1]$
-and intial conditions $u_0=\left[1, 1\right]^intercal$ in the timespan $t=[0,15]$. Then we
-take out 100 datapoints from the simulation:
+***Define Lotka-Volterra model***
 
-```julia
+First, define the Lotka-Volterra with parameters $\left[\alpha, \beta, \gamma, \delta \right]=[1.5, 1, 2, 1]$
+and intial conditions $u_0=\left[1, 1\right]^\intercal$ in the timespan $t=[0,15]$. Then we
+take out `100` datapoints from the simulation:
+
+```{julia,eval=false}
 function lotka_volt!(du, u, p, t)
     x, y= u
     α ,β, γ, δ = p'
@@ -239,7 +273,7 @@ tspan = (0.0f0,15.0f0)
 datasize = 100
 t = range(tspan...,length=datasize)
 
-# Define the experimental parameter
+# Define the experimental parameters
 #p_ = Float32[α  β;
 #             γ  δ]
 p_ = Float32[1.5 1.0;
@@ -250,14 +284,18 @@ sol_lotka = solve(prob, Tsit5(),saveat=t)
 plot(t,sol_lotka',label=["x" "y"],xlabel="t",seriestype = :scatter,ylims=(0,6))
 ```
 
-#### Lotka-Volterra with NODE
+![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/lotka_volt_bears.png?raw=true)
+
+This is the dynamics we will try to capture with our NODE.
+
+###### Lotka-Volterra with NODE
 
 We then define our Neural ODE, the prediction function, and the loss function. We use
 $2-32-2$ network with `swish` activation functions. For the ODE solver, we use a *Tsitouras 5/4 Runge-Kutta method*,
 `tsit5()`, and save it only at time steps where we have data points. We then construct
 the prediction function and use square loss.
 
-```{julia, results="hidden"}
+```{julia, eval=false}
 NN = FastChain((x, p) -> x,
                   FastDense(2, 32, swish),
                   FastDense(32, 32, swish),
@@ -278,7 +316,7 @@ end
 
 We now initialize the iterator and an animation. We also modify
 the call back function s.t. it only outputs the loss function every 50th iteration.
-Further, we set a maximum of 600 iterations of training epochs:
+Further, we set a maximum of `600` iterations of training epochs:
 
 ```{julia, eval=false}
 iter = 0
@@ -309,7 +347,7 @@ end
 
 ```
 
-We use an `ADAM` optimizer and want a precision of `0.05`:
+We use an `ADAM` optimizer and set a learning rate of `0.05`
 
 
 ```{julia, eval=false}
@@ -337,17 +375,21 @@ gif(anim_lotka,raw"ANODE\Figures\lotka-Volterra.gif",fps=15)
 ![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/lotka-Volterra.gif?raw=true)
 
 This is a problem we have often encounter when fitting oscillating systems. The
-neural ODE simply takes the average and gets caught. However, then it suddenly spikes
+neural ODE simply takes the average of the oscillations and gets caught. However, then it suddenly spikes
 up and finds some quite good estimate but then jumps away again as seen around iteration
-200. The makes the training seem quite unstable.
+200. This is both due to the limited set of weights and biases the network can attain
+and because we use an `ADAM` optimizer that tries to explore new neighborhoods.
 
-#### Lotka-Volterra with ANODE and $p=1$
+*Note: In the next [notebook](https://nicolajhmnielsen.github.io/SciML_DTU/ANODE/HTML/Hidden_bears) we
+will also try to take out the minimizer from training using `ADAM` and use `BFGS` afterward. In this
+notebook, we only consider the `ADAM` optimizer to explore the training patterns.*
 
-Therefore let us now augment the ODE and
-add another dimension, i.e., set $p=1$. In practice, we pad the initial
-conditions with 0 and change the architecture to a fully connect $3-32-3$ network.
+###### Lotka-Volterra with ANODE and $p=1$
 
-```julia
+We now augment the ODE and add another dimension, i.e., set $p=1$. In practice, we pad the initial
+conditions with 0 and change the architecture to a  $3-32-3$  network.
+
+```{julia, eval=false}
 input_dim = size(u0)[1]
 hidden_dim = 1
 u0_aug = Float32[u0;zeros(hidden_dim)]
@@ -366,7 +408,7 @@ end
 
 We only want the loss function to depend on the input dimension hence:
 
-```julia
+```{julia, eval=false}
 function loss_neuralode(p)
     pred = predict_neuralode(p)
     loss = sum(abs2, sol_lotka .- pred[1:input_dim,:])
@@ -374,7 +416,7 @@ function loss_neuralode(p)
 end
 ```
 
-We then train again and modify the call back function to include the added
+We then train again and modify the callback function to include the added
 extra dimension:
 
 
@@ -408,7 +450,7 @@ result_neuralode = DiffEqFlux.sciml_train(loss_neuralode, prob_neuralode.p,
 ```
 
 
-We now plot the loss function:
+We now plot the loss function
 
 ```{julia,eval=false}
 plt_loss = plot(loss_vec,label="log loss", title="Log loss function of 1-dim augmented",
@@ -417,8 +459,8 @@ png(plt_loss,raw"ANODE\Figures\loss_lotka-volterra_aug_1dim.png")
 ```
 ![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/loss_lotka-volterra_aug_1dim.png?raw=true)
 
-Here we see that we do not have the same huge spikes in the loss function, however,
-we still get caught in the average. We now display how the trajectories change
+we don't have the same huge spikes in the loss function, however,
+we still have long periods where we get caught. We now display how the trajectories change
 for each training epoch:
 
 ```{julia, eval=false}
@@ -426,11 +468,12 @@ gif(anim_lotka_aug,raw"ANODE\Figures\lotka-volterra_aug_1dim.gif",fps=15)
 ```
 ![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/lotka-volterra_aug_1dim.gif?raw=true)
 
-Again the system finds itself caught in the average but then suddenly jumps out.
+Again the system finds itself caught in the average of the oscillations and sporadically
+finds new minima.
 
-#### Lotka-Volterra with ANODE and $p=3$
+###### Lotka-Volterra with ANODE and $p=3$
 
-We can now try to add more dimensions:
+We now add $3$ dimensions to see how it changes our training pattern
 
 ```{julia, eval=false}
 input_dim = size(u0)[1]
@@ -483,8 +526,6 @@ result_neuralode = DiffEqFlux.sciml_train(loss_neuralode, prob_neuralode.p,
                                           maxiters = max_iter);
 ```
 
-Here we see how the loss function evolves
-
 ```{julia,eval=false}
 plt_loss = plot(loss_vec,label="log loss", title="Log loss function of 3-dim augmented",
                 xlabel="Iteration",yaxis=:log,ylabel="log loss")
@@ -492,29 +533,38 @@ png(plt_loss,raw"ANODE\Figures\loss_lotka-volterra_aug_3dim.png")
 ```
 ![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/loss_lotka-volterra_aug_3dim.png?raw=true)
 
-We plot the animation:
+loss function decreases more steadily without the same huge spikes. The set
+of possible parameters for the network have increased which we could reason
+means that the `ADAM` optimizer does not need to radically try new combinations.
+
+**The animation** shows:
 
 ```{julia, eval=false}
 gif(anim_lotka_aug_3,raw"ANODE\Figures\lotka-volterra_aug_3dim.gif",fps=15)
 ```
 ![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/lotka-volterra_aug_3dim.gif?raw=true)
 
-The dynamics of the training looks much different and looks more stable than
-the training of the NODE and the ANODE with 1 added dimension.
+The dynamics of the training look much different and look more stable than
+the training of the NODE and the ANODE with 1 added dimension when we focus only
+on the trajectories `x NODE` and `y NODE`. Somehow it seems that the optimizer can more
+easily continuously deform the trajectories.
 
-This is the first investigation of the training pattern of ANODE and the improvements, however,
-we will investigate them further later.
+**In this second part** we have seen how the training pattern changes when we use
+ANODE and what the change of dynamics looks like when we train. It seems that
+the extra added dimensions really create more flexibility for the optimizer
+which is very important to find the best fit.
 
-### Question
-What is going on in the extra dimension?
+##### Question
+What is going on in the extra dimension and do they resemble the dynamics of a
+hidden variable?
 
-To investigate this we will add another
-variable to the Lotka Volterra and simulate the system. Then we will hide the data
-of the last variable and train an ANODE with one added dimension. Will the dynamics
-of the added dimension resemble that of the added variable? We will cover this
-in the next file.
+In [notebook](https://nicolajhmnielsen.github.io/SciML_DTU/ANODE/HTML/Hidden_bears)
+we investigate this and add another variable to the Lotka Volterra system.
+Then we will hide the data of the last variable and train an ANODE with one added dimension on the
+first two. We then address if the ANODE can encapsulate the dynamics of the system and
+if the dynamics in the added dimension resemble the dynamics of the missing variable.
 
-# References
+#### References
 [^Perko]: Perko, Lawrence, *Differential equations and dynamical systems*, Vol 7 Springer Science & Business Media, 2013
 [^Dupont]: Dupont, Emilien and Doucet, Arnaud and Teh, Yee Whye, *Augmented Neural ODEs*, arXiv preprint arXiv:1904.01681, 2019
 [^Strauss]: Strauss, Robert *Augmenting Neural Differential Equations to Model Unknown Dynamical Systems with Incomplete State Information*, arXiv:2008.08226, 2020

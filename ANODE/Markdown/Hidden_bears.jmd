@@ -23,8 +23,7 @@ In the following we will:
 
 1. *Introduce bears to the Lotka-Volterra equation*
 
-2. *See if the augmented neural ODE can encapsulate the dynamics with bears as*
-*an unknown variable*
+2. *See if the augmented neural ODE can encapsulate the dynamics with bears as an unknown variable*
 
 3. *Compare the real bear dynamics with that of the augmented NODE*
 
