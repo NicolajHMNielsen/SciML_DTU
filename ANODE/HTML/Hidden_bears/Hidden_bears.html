@@ -665,28 +665,25 @@ div.title {text-align: center;}
 
 
 <h2>Introduction</h2>
-<p>Consider a forest where we monitor the rabbit and the wolf population because we think they are the most vital part of the system and because they are easy to monitor. However, in reality, there are hidden bears around that affect the population of the other two species.</p>
-<p>With only the data from the rabbit and wolf populations, will the neural ODE be able to encapsulate the dynamics even without knowledge of the existence of the extra variable? Say we use an augmented neural ODE with one added dimension, would the dynamics of the added dimension resemble that of the real bear dynamics?</p>
-<p>In the following we will:</p>
+<p>Consider a forest where we monitor the rabbit and the wolf population and think that only the interactions between these species determine the populations. In reality, there are bears around that affect the population of the other two species. With only the data from the rabbit and wolf populations, will the neural ODE be able to encapsulate the dynamics even without knowledge of the existence of the influence of the bears?</p>
+<p>Say we use an augmented neural ODE with one added dimension, would the dynamics of the added dimension resemble that of the real bear dynamics?</p>
+<p>These are the questions we will address in this notebook. The agenda is</p>
 <ol>
 <li><p><em>Introduce bears to the Lotka-Volterra equation</em></p>
 </li>
-<li><p><em>See if the augmented neural ODE can encapsulate the dynamics with bears as</em></p>
+<li><p><em>See if the augmented neural ODE can encapsulate the dynamics without knowledge of the bears</em></p>
 </li>
-</ol>
-<p><em>an unknown variable</em></p>
-<ol start="3">
 <li><p><em>Compare the real bear dynamics with that of the augmented NODE</em></p>
 </li>
 </ol>
-<h2>1. Introducing bears</h2>
-<p>To be consistant with the notation of <a href="https://nicolajhmnielsen.github.io/SciML_DTU/ANODE/HTML/Augmented">the introduction to ANODE</a>, let <code>x</code> be <em>rabbits</em>, <code>y</code> be <em>wolfs</em> and <code>z</code> be <em>bears</em> and define the system as:</p>
+<h4>1. Introducing bears</h4>
+<p>To be consistent with the notation used in <a href="https://nicolajhmnielsen.github.io/SciML_DTU/ANODE/HTML/Augmented">the introduction to ANODE</a>, let <code>x</code> be <em>rabbits</em>, <code>y</code> be <em>wolfs</em> and <code>z</code> be <em>bears</em> and define the system of ODEs as</p>
 <p class="math">\[
 \frac{\mathrm{d}}{\mathrm{d}t}x=αx-βxy-ζxz  \\
 \frac{\mathrm{d}y}{\mathrm{d}t}=-γy+δxy-ηyz \\
 \frac{\mathrm{d}z}{\mathrm{d}t}=-κz+λxz+μyz
 \]</p>
-<p>which we implement in julia as</p>
+<p>which we can implement in julia</p>
 
 
 <pre class='hljl'>
@@ -700,7 +697,7 @@ div.title {text-align: center;}
 </pre>
 
 
-<p>here <code>p</code> is a matrix of the parameters. The parameters for the interactions between rabbits and wolfs are the same as in <a href="https://nicolajhmnielsen.github.io/SciML_DTU/ANODE/HTML/Augmented">the introduction to ANODE</a> and the parameters for the interaction of bears are chosen arbitrarily. We consider <span class="math">$t=[0.0,15.0]$</span>, use the Tsitouras 5/4 Runge-Kutta method, <code>Tsit5&#40;&#41;</code> and save <code>100</code> datapoints of the simulation.</p>
+<p><code>p</code> is a matrix of the parameters. The values of the parameters for the interactions between rabbits and wolfs are the same as in <a href="https://nicolajhmnielsen.github.io/SciML_DTU/ANODE/HTML/Augmented">the introduction to ANODE</a> and the parameters for the interaction of bears are chosen arbitrarily. We consider <span class="math">$t=[0,15]$</span>, use the Tsitouras 5/4 Runge-Kutta method, <code>Tsit5&#40;&#41;</code> and save <code>100</code> datapoints of the simulation.</p>
 
 
 <pre class='hljl'>
@@ -714,13 +711,16 @@ div.title {text-align: center;}
 
 </span><span class='hljl-n'>prob</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>ODEProblem</span><span class='hljl-p'>(</span><span class='hljl-n'>lotka_volt_bear</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>u0</span><span class='hljl-p'>,</span><span class='hljl-n'>tspan</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>p_</span><span class='hljl-p'>)</span><span class='hljl-t'>
 </span><span class='hljl-n'>solution</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>solve</span><span class='hljl-p'>(</span><span class='hljl-n'>prob</span><span class='hljl-p'>,</span><span class='hljl-nf'>Tsit5</span><span class='hljl-p'>(),</span><span class='hljl-t'> </span><span class='hljl-n'>saveat</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-n'>t</span><span class='hljl-p'>)</span><span class='hljl-t'>
-</span><span class='hljl-nf'>plot</span><span class='hljl-p'>(</span><span class='hljl-n'>solution</span><span class='hljl-p'>,</span><span class='hljl-n'>label</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-s'>&quot;x&quot;</span><span class='hljl-t'> </span><span class='hljl-s'>&quot;y&quot;</span><span class='hljl-t'> </span><span class='hljl-s'>&quot;z&quot;</span><span class='hljl-p'>],</span><span class='hljl-n'>xlabel</span><span class='hljl-oB'>=</span><span class='hljl-s'>&quot;t&quot;</span><span class='hljl-p'>,</span><span class='hljl-n'>seriestype</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-sc'>:scatter</span><span class='hljl-p'>,</span><span class='hljl-n'>ylims</span><span class='hljl-oB'>=</span><span class='hljl-p'>(</span><span class='hljl-ni'>0</span><span class='hljl-p'>,</span><span class='hljl-ni'>3</span><span class='hljl-p'>))</span>
+</span><span class='hljl-nf'>plot</span><span class='hljl-p'>(</span><span class='hljl-n'>solution</span><span class='hljl-p'>,</span><span class='hljl-n'>label</span><span class='hljl-oB'>=</span><span class='hljl-p'>[</span><span class='hljl-s'>&quot;x&quot;</span><span class='hljl-t'> </span><span class='hljl-s'>&quot;y&quot;</span><span class='hljl-t'> </span><span class='hljl-s'>&quot;z&quot;</span><span class='hljl-p'>],</span><span class='hljl-n'>xlabel</span><span class='hljl-oB'>=</span><span class='hljl-s'>&quot;t&quot;</span><span class='hljl-p'>,</span><span class='hljl-n'>seriestype</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-sc'>:scatter</span><span class='hljl-p'>,</span><span class='hljl-t'>
+     </span><span class='hljl-n'>ylims</span><span class='hljl-oB'>=</span><span class='hljl-p'>(</span><span class='hljl-ni'>0</span><span class='hljl-p'>,</span><span class='hljl-ni'>3</span><span class='hljl-p'>),</span><span class='hljl-n'>legend</span><span class='hljl-oB'>=:</span><span class='hljl-n'>bottomright</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>title</span><span class='hljl-oB'>=</span><span class='hljl-s'>&quot;System with bears&quot;</span><span class='hljl-p'>)</span>
 </pre>
 
 
+<p><img src="https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/introducing_bears.png?raw&#61;true" alt="" /></p>
+<p>this is the system we will work with in the following.</p>
 <h2>2. Augmented NODE</h2>
-<p>We will now pretend we have no knowledge of the existence of bears or neglect their effect on the population of the rabbits and wolves.</p>
-<p>We explicitly take out only the rabbits and wolfs:</p>
+<p>We will now pretend we have no knowledge of the existence of bears or that we neglect their effect on the populations of rabbits and wolves.</p>
+<p>We explicitly take out only the rabbits and wolves:</p>
 
 
 <pre class='hljl'>
@@ -729,7 +729,7 @@ div.title {text-align: center;}
 </pre>
 
 
-<p>We will try to find the dynamics of the rabbits and wolfs without including the dynamics of the bear. To do that, we will use an ANODE with one added dimension and use the architecture as in <a href="https://nicolajhmnielsen.github.io/SciML_DTU/ANODE/HTML/Augmented">introduction</a>.</p>
+<p>We will try to find the dynamics of the rabbits and wolves without including the dynamics of the bears. To do that, we will use an ANODE with one added dimension and use the architecture as in the <a href="https://nicolajhmnielsen.github.io/SciML_DTU/ANODE/HTML/Augmented">introduction</a>.</p>
 
 
 <pre class='hljl'>
@@ -750,7 +750,7 @@ div.title {text-align: center;}
 </pre>
 
 
-<p>We use square loss and note that we only take out the dimensions of interest <code>pred&#91;1:input_dim,:&#93;</code></p>
+<p>We use square loss and note that we only take out the dimension of interest <code>pred&#91;1:input_dim,:&#93;</code> for the loss function.</p>
 
 
 <pre class='hljl'>
@@ -762,7 +762,7 @@ div.title {text-align: center;}
 </pre>
 
 
-<p>We will first do <code>1000</code> iterations with an <code>adam</code> optimizer with a learning rate of <code>0.05</code>. We take out the minimizer and do <code>300</code> iterations of <code>BFGS</code> or until convergence. We animate the training procedure for both the <code>adam</code> and <code>BFGS</code> optimizer and make one coherent loss function.</p>
+<p>We will first do <code>1000</code> iterations with an <code>ADAM</code> optimizer with a learning rate of <code>0.05</code>. Then we take out the minimizer and do <code>300</code> iterations of <code>BFGS</code> or until convergence. We animate the training procedure with the <code>ADAM</code> and the <code>BFGS</code> optimizer and make one coherent loss function per iteration.</p>
 
 
 <pre class='hljl'>
@@ -794,16 +794,19 @@ div.title {text-align: center;}
 </span><span class='hljl-n'>result_neuralode_adam</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-n'>DiffEqFlux</span><span class='hljl-oB'>.</span><span class='hljl-nf'>sciml_train</span><span class='hljl-p'>(</span><span class='hljl-n'>loss_neuralode</span><span class='hljl-p'>,</span><span class='hljl-t'> </span><span class='hljl-n'>prob_neuralode</span><span class='hljl-oB'>.</span><span class='hljl-n'>p</span><span class='hljl-p'>,</span><span class='hljl-t'>
                                           </span><span class='hljl-nf'>ADAM</span><span class='hljl-p'>(</span><span class='hljl-nfB'>0.05</span><span class='hljl-p'>),</span><span class='hljl-t'> </span><span class='hljl-n'>cb</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-n'>callback</span><span class='hljl-p'>,</span><span class='hljl-t'>
                                           </span><span class='hljl-n'>maxiters</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-n'>max_iter_adam</span><span class='hljl-p'>);</span><span class='hljl-t'>
-</span><span class='hljl-nf'>gif</span><span class='hljl-p'>(</span><span class='hljl-n'>anim_bears</span><span class='hljl-p'>,</span><span class='hljl-so'>raw&quot;ANODE\Figures\Bears\bear_aug_1dim_adam_3.gif&quot;</span><span class='hljl-p'>,</span><span class='hljl-n'>fps</span><span class='hljl-oB'>=</span><span class='hljl-ni'>20</span><span class='hljl-p'>)</span>
+
+</span><span class='hljl-cs'># construct and save the animation as a gif</span><span class='hljl-t'>
+</span><span class='hljl-nf'>gif</span><span class='hljl-p'>(</span><span class='hljl-n'>anim_bears</span><span class='hljl-p'>,</span><span class='hljl-so'>raw&quot;ANODE\Figures\Bears\bear_aug_1dim_adam.gif&quot;</span><span class='hljl-p'>,</span><span class='hljl-n'>fps</span><span class='hljl-oB'>=</span><span class='hljl-ni'>20</span><span class='hljl-p'>)</span>
 </pre>
 
 
-<p>We save the animation in the last line.</p>
-<p>We now do train with <code>BFGS</code> and therefore initialize the animation again.</p>
+<p>We save the gif for training with <code>ADAM</code> and the result of the optimization <code>result_neuralode_adam</code>.</p>
+<p>We take out the minimizer <code>result_neuralode_adam.minimizer</code> and use that as starting point for the training with <code>BFGS</code>.</p>
 
 
 <pre class='hljl'>
-<span class='hljl-n'>anim_bears</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>Animation</span><span class='hljl-p'>()</span><span class='hljl-t'>
+<span class='hljl-cs'># initialize animation again</span><span class='hljl-t'>
+</span><span class='hljl-n'>anim_bears</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-nf'>Animation</span><span class='hljl-p'>()</span><span class='hljl-t'>
 </span><span class='hljl-n'>result_neuralode_BFGS</span><span class='hljl-t'> </span><span class='hljl-oB'>=</span><span class='hljl-t'> </span><span class='hljl-n'>DiffEqFlux</span><span class='hljl-oB'>.</span><span class='hljl-nf'>sciml_train</span><span class='hljl-p'>(</span><span class='hljl-n'>loss_neuralode</span><span class='hljl-p'>,</span><span class='hljl-t'>
                                           </span><span class='hljl-n'>result_neuralode_adam</span><span class='hljl-oB'>.</span><span class='hljl-n'>minimizer</span><span class='hljl-p'>,</span><span class='hljl-t'>
                                           </span><span class='hljl-nf'>BFGS</span><span class='hljl-p'>(</span><span class='hljl-n'>initial_stepnorm</span><span class='hljl-oB'>=</span><span class='hljl-nfB'>0.05</span><span class='hljl-p'>),</span><span class='hljl-t'>
@@ -823,20 +826,21 @@ div.title {text-align: center;}
                 </span><span class='hljl-n'>title</span><span class='hljl-oB'>=</span><span class='hljl-s'>&quot;Log loss function&quot;</span><span class='hljl-p'>,</span><span class='hljl-t'>
                 </span><span class='hljl-n'>xlabel</span><span class='hljl-oB'>=</span><span class='hljl-s'>&quot;Iteration&quot;</span><span class='hljl-p'>,</span><span class='hljl-t'>
                 </span><span class='hljl-n'>ylabel</span><span class='hljl-oB'>=</span><span class='hljl-s'>&quot;log loss&quot;</span><span class='hljl-p'>)</span><span class='hljl-t'>
+</span><span class='hljl-cs'># a need command used throughout to save plots</span><span class='hljl-t'>
 </span><span class='hljl-nf'>png</span><span class='hljl-p'>(</span><span class='hljl-n'>plt_loss</span><span class='hljl-p'>,</span><span class='hljl-so'>raw&quot;ANODE\Figures\Bears\loss_bears_aug_1dim_3.png&quot;</span><span class='hljl-p'>)</span>
 </pre>
 
 
 <p><img src="https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/loss_bears_aug_1dim_3.png?raw&#61;true" alt="" /></p>
-<p>During the first <code>1000</code> iterations with the <code>adam</code> we see some fluctuations in the loss functions as it tried new neighborhoods, however, we also see longs periods of stagnation. When we use the minimizer of the <code>adam</code> after 1000 iterations we see how the <code>BFGS</code> optimizer steadily decreases the loss function.</p>
-<h4>animation of training</h4>
-<p>In this <code>gif</code> we see how the <code>adam</code> optimizer tries our multiple parameter settings but also gets stuck <img src="https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/bear_aug_1dim_adam_3.gif?raw&#61;true" alt="" /></p>
-<p>the <code>BFGS</code> seems to more steadily close in the gaps</p>
+<p>During the first <code>1000</code> iterations with the <code>ADAM</code> optimizer, we see some fluctuations in the loss functions as it tries new neighborhoods, however, we also see longs periods of stagnation. After 1000 iterations we see how the <code>BFGS</code> optimizer steadily decreases the loss function.</p>
+<h5>Animation of training</h5>
+<p>In this <code>gif</code> we see how the <code>ADAM</code> optimizer tries out multiple parameter settings but also gets stuck in long periods of time <img src="https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/bear_aug_1dim_adam_3.gif?raw&#61;true" alt="" /></p>
+<p>the <code>BFGS</code> seems to more steadily find parameters to best fit the data.</p>
 <p><img src="https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/bear_aug_1dim_bfgs_3.gif?raw&#61;true" alt="" /></p>
-<p>It seems that in the end, we encapsulate the rabbit and wolf dynamics really good and the added dimension moves around a bit arbitrarily.</p>
+<p>In the end, we encapsulate the rabbit and wolf dynamics really good and then the added dimension moves around a bit arbitrarily.</p>
 
 
-<p>We can also consider the dynamics in the <span class="math">$(x,y)$</span> phase-space. To make the plot a more informative, we include the time dimension.</p>
+<p>We can also consider the dynamics in the <span class="math">$(x,y)$</span> phase-diagram. To make the plot a bit more informative, we include the time dimension in a gif.</p>
 
 
 <pre class='hljl'>
@@ -857,16 +861,24 @@ div.title {text-align: center;}
 
 <p><img src="https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/phase_dyn.gif?raw&#61;true" alt="" /></p>
 <p>Here we see in phase space that we can encapsulate the dynamics of the rabbits and wolfs quite well without knowledge and data from the bear population.</p>
+<p><em>Note: it seems that the NODE does linear interpolation. This is not the case. It is because in the above we only save the predictions of the neural network at discrete time points.</em></p>
 <h2>3. Compare added dimension with dynamics of bears</h2>
 <p>We now plot the dynamics of the orginal system and that of the found NODE with the bear dynamics unknown</p>
 
 
 <p><img src="https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/compare_dynamics.png?raw&#61;true" alt="" /> <img src="https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/compare_dynamics_bears_only.png?raw&#61;true" alt="" /></p>
-<p>We see that the dynamics we get in the augmented dimension do not directly the same as the bears. The period of the oscillations seems to be close but the magnitude and phase are not as close. It seems that the dynamics in the augmented dimension is not entirely random but neither can it be used to directly find the dynamics of external or unknown variables of the system.</p>
+<p>The dynamics in the augmented dimension is not directly the same as that of the bears. A closer look reveals that the period of the oscillations seems to be close, the magnitude is not close, and the phase is slightly shifted.</p>
+<p>It seems that the dynamics in the augmented dimension is not entirely random but neither can it be used to directly find the dynamics of external or unknown variables of the system.</p>
 <h2>Discussion</h2>
-<p>In the following, we will see what happens when if adjust the initial condition and simulate outside <span class="math">$t=[0,15]$</span></p>
-<h4>Intial conditions</h4>
-<p>We see that elements of the bear dynamics is encapsulated and therefore one could try to bias the model to better do so. In <a href="#footnote-Strauss" class="footnote">[Strauss]</a> they enforce the correct bear  initial condition during training instead of just 0 for the augmented dimension but with no significant effect. However, we will now see what happens if we let our trained model start with the correct intial condition:</p>
+<p>To test the stability and robustness of the NODE model, we will see what happens if we</p>
+<ul>
+<li><p><strong>A</strong>: adjust the initial condition</p>
+</li>
+<li><p><strong>B</strong>: simulate beyond <span class="math">$t=[0,15]$</span>.</p>
+</li>
+</ul>
+<h4><strong>A</strong>. Intial conditions</h4>
+<p>Here we will try to change the initial conditions to see how it affects the prediction of the NODE. First, we try to bias the model to better encapsulate the bear dynamics and enforce the correct initial condition for the bears:</p>
 
 
 <pre class='hljl'>
@@ -888,26 +900,44 @@ div.title {text-align: center;}
 
 <p><img src="https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/init_same_bear.png?raw&#61;true" alt="" /></p>
 <p>The correct initial condition does not resolve the wrong magnitude in the oscillations of the added dimension, however, it makes our added dimension start at the right spot.</p>
-<p>We now try 3 different initial conditions. We increase the initial condition for each of the variables one at a time and fix the others. We trained with <span class="math">$u_0=\{2,1,1.3\}$</span> and now try</p>
+<p>In <a href="#footnote-Strauss" class="footnote">[Strauss]</a> they also enforce the correct bear initial condition during training but with significant increase in similarity between the bear and added dimension.</p>
+<p>We now try 3 different initial conditions. We increase the initial condition for each of the variables - one at a time - and fix the others. We trained with <span class="math">$u_0=\{2,1,1.3\}$</span> and now try</p>
 <ol>
-<li><p>Set <span class="math">$x_0=3$</span> s.t. <span class="math">$u_0=\{3,1,1.3\}$</span></p>
+<li><p>Set <span class="math">$x_0=3$</span>   s.t.  <span class="math">$u_0=\{3,1,1.3\}$</span></p>
 </li>
-<li><p>Set <span class="math">$y_0=1.5$</span> s.t. <span class="math">$u_0=\{2,1.5,1.3\}$</span></p>
+<li><p>Set <span class="math">$y_0=1.5$</span> s.t.  <span class="math">$u_0=\{2,1.5,1.3\}$</span></p>
 </li>
-<li><p>Set <span class="math">$z_0=2$</span> s.t.  <span class="math">$u_0=\{2,1,2\}$</span></p>
+<li><p>Set <span class="math">$z_0=2$</span>   s.t.  <span class="math">$u_0=\{2,1,2\}$</span></p>
 </li>
 </ol>
 
 
-<p><img src="https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/init_x0_3.png?raw&#61;true" alt="" /> <img src="https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/init_y0_1d5.png?raw&#61;true" alt="" /> <img src="https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/init_z0_2.png?raw&#61;true" alt="" /></p>
-<p>The initial condition were arbitrarily chosen, however, we see that the model cannot perfectly generalize to new initial conditions and when we tested very different initial conditions, the predictions were wrose. This suggests that one should run multiple trajectories with different initial conditions for the model to be able to generalize better.</p>
-<h4>long time behavior</h4>
-<p>We now check what happens if set <span class="math">$t=[0.0,70]$</span> without retraining to see the long time behaviour</p>
+<h6>1.</h6>
+<p><img src="https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/init_x0_3.png?raw&#61;true" alt="" /></p>
+<h6>2.</h6>
+<p><img src="https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/init_y0_1d5.png?raw&#61;true" alt="" /></p>
+<h6>3.</h6>
+<p><img src="https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/init_z0_2.png?raw&#61;true" alt="" /></p>
+<p>The initial condition were arbitrarily chosen, however, we see that the model cannot perfectly generalize to new initial conditions and when we tested very different initial conditions, the predictions were even worse. This suggests that one could construct multiple trajectories with different initial conditions for the model to train on and hopefully be able to generalize better.</p>
+<h4><strong>B</strong> Long time behavior</h4>
+<p>We now check what happens if set <span class="math">$t=[0,70]$</span> without retraining to see the long time behavior</p>
 
 
 
 <p><img src="https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/compare_dynamics_70.png?raw&#61;true" alt="" /></p>
-<p>We trained only on <span class="math">$t=[0,15]$</span> hence the model was not presented to the data of the increasing bear population. The dynamics in the added dimension start to deviate greatly for <span class="math">$t>15$</span> and in turn, the rabbit and wolf population also start to differ. To improve this, one could also let the simulation run for longer periods.</p>
+<p>First, inspect the original system to see that after <span class="math">$t=20$</span>, the bear population increases steadily and the wolf population starts to decrease. Remember that the model was trained in <span class="math">$t=[0,15]$</span> hence the model was not presented to data with increasing bear population.</p>
+<p>The trained ANODE quickly starts to deviate in the augmented dimension for <span class="math">$t>15$</span> and in turn, the rabbit and wolf populations also start to differ. An obvious way to improve this could be to train on data with a longer time span.</p>
+<p>If more data is not available one could use other techniques to reduce overfitting for neural networks e.g.</p>
+<ul>
+<li><p>use dropouts</p>
+</li>
+<li><p>use stopping criteria. <em>remember at the end of the training gif for <code>BFGS</code> where the added dimension fluctuated randomly</em></p>
+</li>
+<li><p>use ensemble methods and train multiple ANODEs simultaneously and take the mean of the predictions</p>
+</li>
+<li><p>if we had more data we could use different cross-validation techniques for time series</p>
+</li>
+</ul>
 <h1>References</h1>
 <div class="footnote" id="footnote-Strauss"><p class="footnote-title">Strauss</p><p>Strauss, Robert <em>Augmenting Neural Differential Equations to Model Unknown Dynamical Systems with Incomplete State Information</em>, arXiv:2008.08226, 2020</p>
 </div>
@@ -917,7 +947,7 @@ div.title {text-align: center;}
         <div class="footer">
           <p>
             Published from <a href="Hidden_bears.jmd">Hidden_bears.jmd</a>
-            using <a href="http://github.com/JunoLab/Weave.jl">Weave.jl</a> v0.10.9 on 2021-06-14.
+            using <a href="http://github.com/JunoLab/Weave.jl">Weave.jl</a> v0.10.9 on 2021-06-17.
           </p>
         </div>
       </div>

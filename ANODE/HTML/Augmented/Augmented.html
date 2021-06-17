@@ -684,7 +684,7 @@ div.title {text-align: center;}
 <p>The intersection at <span class="math">$t=t_p$</span> is problematic and a direct violation of the existence and uniqueness theorem. <strong>The reason</strong> it is problematic can easily be seen if we start at <span class="math">$t_1$</span> and move back in time for each of the trajectories. This seems fine until we reach <span class="math">$t=t_p$</span> where the solutions intersect. None of the trajectories are unique and if we were to continued towards <span class="math">$t_0$</span>, we would not be able to know which trajectory to follow. This ultimately means that we could end up at arbitrary initial conditions. Likewise different initial conditions could lead us down arbitrary trajectories for <span class="math">$t_0 \rightarrow t_1$</span> which would break down many physical systems derived from first principles as they heavily rely on the existence and uniqueness of our solutions.</p>
 <h4>Existence and uniqueness tested on neural ODEs</h4>
 <p>As NODEs are built into the framework of ODEs, the existence and uniqueness theorem also holds here. To test this, we will present the model would for data that would obviously be well approximated by a function that violates the existence and uniqueness theorem. Could this BlackBox somehow shortcircuit the theorem?</p>
-<p><strong>Test of existance and uniqueness for NODE</strong> <em>NOTE: it is quite a special case, hence the implementation might not seem entirely intuitive. Therefore, focus mainly on the graphical results</em></p>
+<p><strong>Test of existence and uniqueness for NODE</strong> <em>NOTE: it is quite a special case, hence the implementation might not seem entirely intuitive. Therefore, focus mainly on the graphical results</em></p>
 <p>Consider some simple 1-D system and with two sets of data points</p>
 <p class="math">\[
 \begin{align*}
@@ -1135,7 +1135,7 @@ b &= \{(0,-1),(1,1)\}
         <div class="footer">
           <p>
             Published from <a href="Augmented.jmd">Augmented.jmd</a>
-            using <a href="http://github.com/JunoLab/Weave.jl">Weave.jl</a> v0.10.9 on 2021-06-16.
+            using <a href="http://github.com/JunoLab/Weave.jl">Weave.jl</a> v0.10.9 on 2021-06-17.
           </p>
         </div>
       </div>

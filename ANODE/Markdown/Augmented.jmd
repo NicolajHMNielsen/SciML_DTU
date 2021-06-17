@@ -58,7 +58,7 @@ also holds here. To test this, we will present the model would for data that wou
 well approximated by a function that violates the existence and uniqueness theorem.
 Could this BlackBox somehow shortcircuit the theorem?
 
-**Test of existance and uniqueness for NODE**
+**Test of existence and uniqueness for NODE**
 *NOTE: it is quite a special case, hence the implementation might not seem
 entirely intuitive. Therefore, focus mainly on the graphical results*
 
