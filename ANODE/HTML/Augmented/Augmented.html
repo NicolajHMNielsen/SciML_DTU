@@ -678,8 +678,8 @@ div.title {text-align: center;}
 <p>NODEs are essentially an ODE where the function that proscribes the dynamics is a neural network. From the <em>universal approximation theorem</em>, we know that neural networks can theoretically approximate any continuous to arbitrary precision. When these are built into the framework of ODEs, the NODE inherits limitations and properties of generic ODEs.</p>
 <h4>Existence and uniqueness for ODEs</h4>
 <p>Trajectories of ODEs <strong>cannot</strong> intersect in phase-space. This follows directly from the existence and uniqueness theorem, section 2.2, <a href="#footnote-Perko" class="footnote">[Perko]</a>. The proof can be seen in <em>A.1</em>, <a href="#footnote-Dupont" class="footnote">[Dupont]</a>.</p>
-<p>A simple way to understand this is to look at an example in 1-D ODE. &lt;br&gt; Consider two solutions <span class="math">$H_1(t)$</span> and <span class="math">$H_2(t)$</span> with different intial condition <span class="math">$H_1(t_0)\neq H_2(t_0)$</span> in some timespan <span class="math">$t=[t_0, t_1]$</span>. Further, let <span class="math">$P$</span> be an instance at time <span class="math">$t=t_b$</span> where  <span class="math">$H_1(t_p)=H_2(t_p)$</span>. The instance is depicted below</p>
-<p>&lt;p align&#61;&quot;center&quot;&gt;   &lt;img src&#61;&quot;https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/unique.png?raw&#61;true&quot;&gt; &lt;/p&gt;</p>
+<p>A simple way to understand this is to look at an example in 1-D ODE.</p>
+<p>Consider two solutions <span class="math">$H_1(t)$</span> and <span class="math">$H_2(t)$</span> with different intial condition <span class="math">$H_1(t_0)\neq H_2(t_0)$</span> in some timespan <span class="math">$t=[t_0, t_1]$</span>. Further, let <span class="math">$P$</span> be an instance at time <span class="math">$t=t_b$</span> where  <span class="math">$H_1(t_p)=H_2(t_p)$</span>. The instance is depicted below</p>
 <p><img src="https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/unique.png?raw&#61;true" alt="" /></p>
 <p>The intersection at <span class="math">$t=t_p$</span> is problematic and a direct violation of the existence and uniqueness theorem. <strong>The reason</strong> it is problematic can easily be seen if we start at <span class="math">$t_1$</span> and move back in time for each of the trajectories. This seems fine until we reach <span class="math">$t=t_p$</span> where the solutions intersect. None of the trajectories are unique and if we were to continued towards <span class="math">$t_0$</span>, we would not be able to know which trajectory to follow. This ultimately means that we could end up at arbitrary initial conditions. Likewise different initial conditions could lead us down arbitrary trajectories for <span class="math">$t_0 \rightarrow t_1$</span> which would break down many physical systems derived from first principles as they heavily rely on the existence and uniqueness of our solutions.</p>
 <h4>Existence and uniqueness tested on neural ODEs</h4>
@@ -687,10 +687,10 @@ div.title {text-align: center;}
 <p><strong>Test of existance and uniqueness for NODE</strong> <em>NOTE: it is quite a special case, hence the implementation might not seem entirely intuitive. Therefore, focus mainly on the graphical results</em></p>
 <p>Consider some simple 1-D system and with two sets of data points</p>
 <p class="math">\[
-\begin{align}
-r &= \{(0,1),(1,-1)\}
+\begin{align*}
+r &= \{(0,1),(1,-1)\} \\
 b &= \{(0,-1),(1,1)\}
-\end{align}
+\end{align*}
 \]</p>
 
 
@@ -704,11 +704,7 @@ b &= \{(0,-1),(1,1)\}
 </pre>
 
 
-<pre class="julia-error">
-ERROR: UndefVarError: plot not defined
-</pre>
-
-
+<p><img src="https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/unique_setup.png?raw&#61;true" alt="" /></p>
 <p>We now try to train a function that simultaneously find a flow that maps <span class="math">$r$</span> and <span class="math">$b$</span> at time <span class="math">$t=0$</span> to the values at <span class="math">$t=1$</span>. If the violation is not obvious, take a blue pencil in one hand and a red pencil in the other hand. Put down the pencils at <span class="math">$t=0$</span> and connect the blue dots and the red dots without lifting the pencils or crossing the lines. That is impossible to do well without any intersection of trajectories. However, we let the train the Neural ODE for 20 epochs to see what happens.</p>
 <p>First, define the neural ODE problem in julia</p>
 
@@ -811,14 +807,15 @@ ERROR: UndefVarError: plot not defined
 <p>The flow determined by the NODE does not allow the intersection of the trajectories. This demonstrates that the NODE has the inherent properties of the ODE and obeys the existence and uniqueness theorem.</p>
 <p>This is not always the case for ML algorithms that tries to mimic ODE behavior and properties. In the report, we discussed ResNet and RNN and that NODE can be seen as a way to parameterize the continuous transformation of the hidden states. In <a href="#footnote-Dupont" class="footnote">[Dupont]</a> they use the same toy example as above and show that the ResNet allows trajectories to cross.</p>
 <p><strong>In the part above</strong> we conclude that some functions cannot be approximated by a NODE due to the inherent properties of ODE flows. However, if we know that the data source, we try to formulate a model for could be approximated by an ODE, then we can use the NODE. Now we can try to improve the training process with the introduction of the augmented neural ODE.</p>
-<h2>Introducing augmented neural ODE</h2>
+<h2>2. Introducing augmented neural ODE</h2>
 <p>When we train the neural network to approximate the dynamics of an ODE, the procedure runs many different combinations of weights and biases. As trajectories cannot cross in phase-space, we constraint the set of possible values of weights and biases. As the training is gradient-based, this means that sometimes we end up at local minima we cannot escape which in turn leads to poor approximations, huge computational cost, and complicated flows <a href="#footnote-Dupont" class="footnote">[Dupont]</a>. To extend the possible combinations of weights and biases, we expand the space on which we learn the ODE flow. We lift the trajectories from <span class="math">${\rm I\!R}^{d}$</span> to <span class="math">${\rm I\!R}^{d+p}$</span>. In the extra <span class="math">$p$</span> dimensions the model has a larger playground which leads to simpler flows, more stable training, and increased accuracy. This is very well described and introduced in <a href="#footnote-Dupont" class="footnote">[Dupont]</a>. Experimentally the augmented Neural ODE has been shown to reduce the loss function, reduce the computational cost, improve stability and generalization when presented to different initial conditions <a href="#footnote-Dupont" class="footnote">[Dupont]</a><a href="#footnote-Strauss" class="footnote">[Strauss]</a>.</p>
 <p><strong>Formally</strong> Consider a NODE formulated in terms of an initial value problem, <em>IVP</em></p>
 <p class="math">\[
 \frac{\mathrm{d}}{\mathrm{d}t}u(t)=f(u(t),t),
 \quad \quad \quad u(0)=u_0, \quad u_0 \in{\rm I\!R}^{d}
 \]</p>
-<p>here <span class="math">$f$</span> is a neural network. &lt;br&gt; We then introduce another IVP</p>
+<p>here <span class="math">$f$</span> is a neural network.</p>
+<p>We then introduce another IVP</p>
 <p class="math">\[
 \frac{\mathrm{d}}{\mathrm{d}t}a(t)=f(a(t),t),
 \quad \quad \quad a(0)=0, \quad a_0 \in{\rm I\!R}^{p}
@@ -861,11 +858,7 @@ ERROR: UndefVarError: plot not defined
 </pre>
 
 
-<pre class="julia-error">
-ERROR: UndefVarError: ODEProblem not defined
-</pre>
-
-
+<p><img src="https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/lotka_volt_bears.png?raw&#61;true" alt="" /></p>
 <p>This is the dynamics we will try to capture with our NODE.</p>
 <h6>Lotka-Volterra with NODE</h6>
 <p>We then define our Neural ODE, the prediction function, and the loss function. We use <span class="math">$2-32-2$</span> network with <code>swish</code> activation functions. For the ODE solver, we use a <em>Tsitouras 5/4 Runge-Kutta method</em>, <code>tsit5&#40;&#41;</code>, and save it only at time steps where we have data points. We then construct the prediction function and use square loss.</p>
@@ -1129,7 +1122,7 @@ ERROR: UndefVarError: ODEProblem not defined
 <h5>Question</h5>
 <p>What is going on in the extra dimension and do they resemble the dynamics of a hidden variable?</p>
 <p>In <a href="https://nicolajhmnielsen.github.io/SciML_DTU/ANODE/HTML/Hidden_bears">notebook</a> we investigate this and add another variable to the Lotka Volterra system. Then we will hide the data of the last variable and train an ANODE with one added dimension on the first two. We then address if the ANODE can encapsulate the dynamics of the system and if the dynamics in the added dimension resemble the dynamics of the missing variable.</p>
-<h1>References</h1>
+<h4>References</h4>
 <div class="footnote" id="footnote-Perko"><p class="footnote-title">Perko</p><p>Perko, Lawrence, <em>Differential equations and dynamical systems</em>, Vol 7 Springer Science &amp; Business Media, 2013</p>
 </div>
 <div class="footnote" id="footnote-Dupont"><p class="footnote-title">Dupont</p><p>Dupont, Emilien and Doucet, Arnaud and Teh, Yee Whye, <em>Augmented Neural ODEs</em>, arXiv preprint arXiv:1904.01681, 2019</p>

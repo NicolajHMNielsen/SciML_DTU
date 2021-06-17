@@ -9,14 +9,13 @@ using Flux, DiffEqFlux, OrdinaryDiffEq, Optim, Plots, Sundials, ODEInterfaceDiff
 ```
 
 ## Introduction
-Consider a forest where we monitor the rabbit and the wolf population because we
-think they are the most vital part of the system and because they are easy to monitor.
-However, in reality, there are hidden bears around that affect the population
-of the other two species.
+Consider a forest where we monitor the rabbit and the wolf population and think
+that only the interactions between these species determines the populations.
+In reality, there are bears around that affect the population of the other two species.
 
 With only the data from the rabbit and wolf populations, will the neural ODE be able
 to encapsulate the dynamics even without knowledge of the existence of the
-extra variable? Say we use an augmented neural ODE with one added dimension,
+influence of the bears? Say we use an augmented neural ODE with one added dimension,
 would the dynamics of the added dimension resemble that of the real bear dynamics?
 
 In the following we will:
@@ -27,10 +26,10 @@ In the following we will:
 
 3. *Compare the real bear dynamics with that of the augmented NODE*
 
-## 1. Introducing bears
+#### 1. Introducing bears
 
-To be consistant with the notation of [the introduction to ANODE](https://nicolajhmnielsen.github.io/SciML_DTU/ANODE/HTML/Augmented),
-let `x` be *rabbits*, `y` be *wolfs* and `z` be *bears* and define the system as:
+To be consistant with the notation used in [the introduction to ANODE](https://nicolajhmnielsen.github.io/SciML_DTU/ANODE/HTML/Augmented),
+let `x` be *rabbits*, `y` be *wolfs* and `z` be *bears* and define system of ODEs as
 
 
 ```math
@@ -39,7 +38,7 @@ let `x` be *rabbits*, `y` be *wolfs* and `z` be *bears* and define the system as
 \frac{\mathrm{d}z}{\mathrm{d}t}=-κz+λxz+μyz
 ```
 
-which we implement in julia as
+which we can implement in julia
 
 ```{julia,eval=false}
 function lotka_volt_bear(du,u,p,t)
@@ -51,10 +50,11 @@ function lotka_volt_bear(du,u,p,t)
 end
 ```
 
-here `p` is a matrix of the parameters. The parameters for the interactions between
+
+`p` is a matrix of the parameters. The values of the parameters for the interactions between
 rabbits and wolfs are the same as in [the introduction to ANODE](https://nicolajhmnielsen.github.io/SciML_DTU/ANODE/HTML/Augmented)
 and the parameters for the interaction of bears are chosen arbitrarily. We
-consider $t=[0.0,15.0]$, use the Tsitouras 5/4 Runge-Kutta method, `Tsit5()` and save
+consider $t=[0,15]$, use the Tsitouras 5/4 Runge-Kutta method, `Tsit5()` and save
 `100` datapoints of the simulation.
 
 
@@ -70,8 +70,11 @@ t = range(tspan...,length=datasize)
 
 prob = ODEProblem(lotka_volt_bear, u0,tspan, p_)
 solution = solve(prob,Tsit5(), saveat = t)
-plot(solution,label=["x" "y" "z"],xlabel="t",seriestype = :scatter,ylims=(0,3))
+plot(solution,label=["x" "y" "z"],xlabel="t",seriestype = :scatter,
+     ylims=(0,3),legend=:bottomright, title="System with bears")
 ```
+
+![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/introducing_bears.png?raw=true)
 
 ## 2. Augmented NODE
 
@@ -87,7 +90,7 @@ u0_🐺_🐰 = u0[1:2]
 
 We will try to find the dynamics of the rabbits and wolfs without including the dynamics of the
 bear. To do that, we will use an ANODE with one added dimension and use the
-architecture as in [introduction](https://nicolajhmnielsen.github.io/SciML_DTU/ANODE/HTML/Augmented).
+architecture as in the [introduction](https://nicolajhmnielsen.github.io/SciML_DTU/ANODE/HTML/Augmented).
 
 
 ```{julia,eval=false}
@@ -107,7 +110,8 @@ function predict_neuralode(p)
 end
 ```
 
-We use square loss and note that we only take out the dimensions of interest `pred[1:input_dim,:]`
+We use square loss and note that we only take out the dimension of interest `pred[1:input_dim,:]`
+for the loss function.
 
 ```{julia,eval=false}
 function loss_neuralode(p)
@@ -117,10 +121,10 @@ function loss_neuralode(p)
 end
 ```
 
-We will first do `1000` iterations with an `adam` optimizer with a learning rate of
-`0.05`. We take out the minimizer and do `300` iterations of `BFGS` or until convergence.
-We animate the training procedure for both the `adam` and `BFGS`
-optimizer and make one coherent loss function.
+We will first do `1000` iterations with an `ADAM` optimizer with a learning rate of
+`0.05`. We *take out the minimizer* and do `300` iterations of `BFGS` or until convergence.
+We animate the training procedure with the `ADAM` and the `BFGS`
+optimizer and make one coherent loss function per iteration.
 
 ```{julia, eval=false}
 iter = 0
@@ -151,15 +155,19 @@ end
 result_neuralode_adam = DiffEqFlux.sciml_train(loss_neuralode, prob_neuralode.p,
                                           ADAM(0.05), cb = callback,
                                           maxiters = max_iter_adam);
-gif(anim_bears,raw"ANODE\Figures\Bears\bear_aug_1dim_adam_3.gif",fps=20)
+
+# construct and save the animation as a gif
+gif(anim_bears,raw"ANODE\Figures\Bears\bear_aug_1dim_adam.gif",fps=20)
 ```
 
-We save the animation in the last line.
+We save the gif for training with `ADAM` and the result of the optimizaiton `result_neuralode_adam`.
 
-We now do train with `BFGS` and therefore initialize the animation again.
+We take out the minmizer `result_neuralode_adam.minimizer` and use that as starting
+point for the training with `BFGS`.
 
 
 ```{julia,eval=false}
+# initialize animation again
 anim_bears = Animation()
 result_neuralode_BFGS = DiffEqFlux.sciml_train(loss_neuralode,
                                           result_neuralode_adam.minimizer,
@@ -178,28 +186,29 @@ plt_loss = plot(loss_vec[1:iter],
                 title="Log loss function",
                 xlabel="Iteration",
                 ylabel="log loss")
+# a need command used throughout to save plots
 png(plt_loss,raw"ANODE\Figures\Bears\loss_bears_aug_1dim_3.png")
 ```
 
 ![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/loss_bears_aug_1dim_3.png?raw=true)
 
-During the first `1000` iterations with the `adam` we see some fluctuations in the loss functions
-as it tried new neighborhoods, however, we also see longs periods of stagnation.
+During the first `1000` iterations with the `ADAM` optimizer, we see some fluctuations in the loss functions
+as it tries new neighborhoods, however, we also see longs periods of stagnation.
 When we use the minimizer of the `adam` after 1000 iterations we see how the `BFGS` optimizer
 steadily decreases the loss function.
 
-#### animation of training
+###### Animation of training
 
-In this `gif` we see how the `adam` optimizer tries our multiple parameter settings but
-also gets stuck
+In this `gif` we see how the `ADAM` optimizer tries out multiple parameter settings but
+also gets stuck in long periods of time
 ![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/bear_aug_1dim_adam_3.gif?raw=true)
 
-the `BFGS` seems to more steadily close in the gaps
+the `BFGS` seems to more steadily close in the gaps to find the optimal parameters
 
 ![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/bear_aug_1dim_bfgs_3.gif?raw=true)
 
 It seems that in the end, we encapsulate the rabbit and wolf dynamics really good
-and the added dimension moves around a bit arbitrarily.
+and then the added dimension moves around a bit arbitrarily.
 
 ```{julia,echo=false,eval=false}
 opt_par = result_neuralode_BFGS.minimizer
@@ -211,8 +220,8 @@ end
 predictions = predict_neuralode(result_neuralode_BFGS.minimizer)
 ```
 
-We can also consider the dynamics in the $(x,y)$ phase-space. To make the plot
-a more informative, we include the time dimension.
+We can also consider the dynamics in the $(x,y)$ phase-diagram. To make the plot
+a bit more informative, we include the time dimension in a gif.
 
 ```{julia,eval=false}
 anim_phase = @animate for i=1:100
@@ -233,7 +242,9 @@ gif(anim_phase,raw"ANODE\Figures\Bears\phase_dyn.gif",fps=7)
 ![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/phase_dyn.gif?raw=true)
 
 Here we see in phase space that we can encapsulate the dynamics of the rabbits and wolfs
-quite well without knowledge and data from the bear population.
+quite well without knowledge and data from the bear population. *Note: it seems that
+the NODE do linear interpolation. This is not the case. It is because in the above
+we only save the predictions of the neural network at discrete timepoints.*
 
 
 ## 3. Compare added dimension with dynamics of bears
@@ -272,9 +283,9 @@ png(plt_bear,raw"ANODE\Figures\Bears\compare_dynamics_bears_only.png")
 ![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/compare_dynamics_bears_only.png?raw=true)
 
 
-We see that the dynamics we get in the augmented dimension do not directly the
-same as the bears. The period of the oscillations seems to be close but the magnitude
-and phase are not as close. It seems that the dynamics in the augmented dimension is not entirely random but
+The dynamics in the augmented dimension is not directly the same as that of the bears.
+A closer look reveals that the period of the oscillations seems to be close, the magnitude are not close,
+and the phase is slightly shifted. It seems that the dynamics in the augmented dimension is not entirely random but
 neither can it be used to directly find the dynamics of external or unknown variables
 of the system.
 
@@ -283,15 +294,13 @@ of the system.
 
 ## Discussion
 
-In the following, we will see what happens when if adjust the initial condition and
-simulate outside $t=[0,15]$
+To test the stability of the neural network, we will see what happens if we adjust
+the initial condition and simulate beyond $t=[0,15]$.
 
-#### Intial conditions
-We see that elements of the bear dynamics is encapsulated and therefore one could
-try to bias the model to better do so. In [^Strauss] they enforce the correct bear
- initial condition during training instead of just 0 for the augmented dimension but with no significant effect.
-However, we will now see what happens if we let our trained model start with the correct
-intial condition:
+#### 1. Intial conditions
+Here we will try to change the initial conditions to see how i affects the prediction
+of the NODE. First, we try to bias the model to better encapsulate the bear dynamics
+and enforce the correct initial condition for the bears:
 
 ```{julia, eval=false}
 prediction_init_bear = Array(prob_neuralode(u0, result_neuralode_BFGS.minimizer))
@@ -314,12 +323,17 @@ png(plt_pred_init,raw"ANODE\Figures\Bears\init_same_bear.png")
 The correct initial condition does not resolve the wrong magnitude in the oscillations
 of the added dimension, however, it makes our added dimension start at the right spot.
 
+In [^Strauss] they also enforce the correct bear initial condition during training but with significant
+increase in similarity between the bear and added dimension.
+
+
 We now try 3 different initial conditions. We increase the initial condition for each of the
 variables one at a time and fix the others. We trained with $u_0=\{2,1,1.3\}$ and now try
 
-1. Set $x_0=3$ s.t. $u_0=\{3,1,1.3\}$
-2. Set $y_0=1.5$ s.t. $u_0=\{2,1.5,1.3\}$
-3. Set $z_0=2$ s.t.  $u_0=\{2,1,2\}$
+1. Set $x_0=3$   s.t.  $u_0=\{3,1,1.3\}$
+2. Set $y_0=1.5$ s.t.  $u_0=\{2,1.5,1.3\}$
+3. Set $z_0=2$   s.t.  $u_0=\{2,1,2\}$
+
 
 ```{julia, echo=false,eval=false}
 
@@ -346,18 +360,20 @@ plt_pred_init = plot!(plt_sys_init, t, prediction_init',
 png(plt_pred_init,raw"ANODE\Figures\Bears\init_z0_2.png")
 ```
 
-
+###### 1.
 ![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/init_x0_3.png?raw=true)
+###### 2.
 ![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/init_y0_1d5.png?raw=true)
+###### 3.
 ![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/init_z0_2.png?raw=true)
 
 The initial condition were arbitrarily chosen, however, we see that the model cannot
 perfectly generalize to new initial conditions and when we tested very different initial
-conditions, the predictions were wrose. This suggests that one should run multiple trajectories
-with different initial conditions for the model to be able to generalize better.
+conditions, the predictions were even worse. This suggests that one should construct multiple trajectories
+with different initial conditions for the model train on and hopefully be able to generalize better.
 
-#### long time behavior
-We now check what happens if set $t=[0.0,70]$ without retraining to see the long time
+#### 2. Long time behavior
+We now check what happens if set $t=[0,70]$ without retraining to see the long time
 behaviour
 
 ```{julia, eval=false,echo=false}
@@ -394,10 +410,21 @@ png(plt_pred_long,raw"ANODE\Figures\Bears\compare_dynamics_70.png")
 
 ![](https://github.com/NicolajHMNielsen/SciML_DTU/blob/main/ANODE/Figures/Bears/compare_dynamics_70.png?raw=true)
 
-We trained only on $t=[0,15]$ hence the model was not presented to the data of the
-increasing bear population. The dynamics in the added dimension start to deviate
-greatly for $t>15$ and in turn, the rabbit and wolf population also start to differ.
-To improve this, one could also let the simulation run for longer periods.
+First, inspect the original system to see that after $t=20$, the bear population
+increases steadily and the wolf population starts to decrease. Remember that the
+model was trained in $t=[0,15]$ hence the model was not presented to the data of the
+increasing bear population.
+
+The trained ANODE quickly starts to deviate in the augmented dimension for $t>15$
+and in turn, the rabbit and wolf population also start to differ. An obious way to
+improve this, could be to train on data with a longer time span.
+
+If more data is not available one could use other techniques to reduce overfitting
+for neural networks e.g.
+- use dropouts
+- use a stopping criteria. *remember in the end of the training gif for `BFGS` where the added dimension fluctuated randomly*
+- use ensample methods and train multiple ANODEs simultaneously and take the mean of the predictions
+- if we had more data we could use different cross validation techniques for time series
 
 
 
